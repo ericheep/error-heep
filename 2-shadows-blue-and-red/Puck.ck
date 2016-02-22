@@ -26,7 +26,7 @@ public class Puck{
     }
 
     // receives OSC and sends out serial
-    fun void send(int led, int hue, int sat, int val) {
+    fun void color(int led, int hue, int sat, int val) {
         // ensuring the proper values get sent
         hue % 1024 => hue;
         Std.clamp(sat, 0, 255) => sat;
