@@ -64,7 +64,7 @@ float easedSpreadLed[num];
 0.5 => float centroidEasingAmount;
 0.5 => float spreadEasingAmount;
 
-["field-1.wav", "field-1.wav"] @=> string file[];
+["field-1.wav", "field-2.wav"] @=> string file[];
 
 for (int i; i < num; i++) {
     // led initialize
