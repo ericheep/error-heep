@@ -6,6 +6,7 @@ Machine.add(me.dir() + "/Handshake.ck");
 Machine.add(me.dir() + "/HandshakeID.ck");
 Machine.add(me.dir() + "/Puck.ck");
 Machine.add(me.dir() + "/Spectral.ck");
+Machine.add(me.dir() + "/Subband.ck");
 Machine.add(me.dir() + "/Features.ck");
 
 // midi class

@@ -15,7 +15,7 @@ for (0 => int i; i < 2; i++) {
 // variables you are free to change!
 
 // colors, from 0-1023
-0 => int lowHue;
+512 => int lowHue;
 1023 => int highHue;
 
 // midi class
