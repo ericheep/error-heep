@@ -2,8 +2,6 @@
 
 March 14th, 2016 recital.
 
-1. Odradek
-2. Improvisation Trio
-3. Drone
-4. LED Shadows
-5. Beast
+1. Check/Odradek/Check
+2. It's Quiet Out Tonight
+3. Beast
