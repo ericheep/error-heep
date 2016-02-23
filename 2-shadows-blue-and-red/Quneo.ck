@@ -4,22 +4,22 @@
 // class for communicating with ChucK and a Quneo
 
 // configured for Quneo configuration mode 4
-// press the small circle in the top left and 
+// press the small circle in the top left and
 // select the fourth pad to activate mode 4
 
-public class Quneo { 
-    
+public class Quneo {
+
     // notes
     // Event @ newstuff;
-    
+
     // sliders  ---------------------------------
     8 => int num_sliders;
 
     // arrays for sliders
     int slider_x[num_sliders];
     int slider_z[num_sliders];
-  
-    // array for slider x-axis 
+
+    // array for slider x-axis
     [ 0,  1,  2,  3,  6,  7,  8,  9] @=> int slider_loc_x[];
     // array for slider z-axis
     [12, 13, 14, 15, 18, 19, 20, 21] @=> int slider_loc_z[];
@@ -35,7 +35,7 @@ public class Quneo {
 
     // array for circle r-axis
     [ 4,  5] @=> int circle_loc_r[];
-    // array for circle z-axis 
+    // array for circle z-axis
     [16, 17] @=> int circle_loc_z[];
     // array for circle leds
     [ 6,  7] @=> int circle_led[];
@@ -71,20 +71,20 @@ public class Quneo {
     // arrows -----------------------------------
     12 => int num_arrows;
 
-    // arrays for arrows 
+    // arrays for arrows
     int arrow_v[num_arrows];
     int arrow_z[num_arrows];
 
     // array for arrow velocity
-    [11, 12, 13, 14, 15, 16, 
+    [11, 12, 13, 14, 15, 16,
      17, 18, 20, 21, 22, 23] @=> int arrow_loc_v[];
     // array for arrow z-axis
-    [71, 72, 73, 74, 75, 76, 
+    [71, 72, 73, 74, 75, 76,
      77, 78, 80, 81, 82, 83] @=> int arrow_loc_z[];
     // array for arrow leds
     [36, 37, 38, 39, 40, 41,
      42, 43, 46, 47, 48, 49] @=> int arrow_led[];
-    
+
     // misc -------------------------------------
     int diamond_v, diamond_z;
     24 => int diamond_loc_v;
@@ -112,11 +112,11 @@ public class Quneo {
     MidiOut out[10];
     MidiMsg msgIn;
     MidiMsg msgOut;
-    
+
     for (int i; i < in.cap(); i++) {
         // no print err
         in[i].printerr(0);
-        
+
         // open the device
         if (in[i].open(i)) {
             if (in[i].name() == "QUNEO") {
@@ -126,8 +126,8 @@ public class Quneo {
             }
         }
         else break;
-    } 
-    
+    }
+
     spork ~ update();
 
     // input ------------------------------------
@@ -137,12 +137,11 @@ public class Quneo {
             in[port] => now;
             while (in[port].recv(msgIn)) {
                 storeValues(msgIn.data1, msgIn.data2, msgIn.data3);
-                //<<< msgIn.data1, msgIn.data2, msgIn.data3 >>>;
                 //19 79
             }
         }
     }
-    
+
     fun void storeValues(int data1, int data2, int data3) {
         // 128 and 144, trigger/velocity based
         if((data1 == 128 || data1 == 144)) {
@@ -159,10 +158,10 @@ public class Quneo {
             if (data2 == diamond_loc_v) {
                 data3 => diamond_v;
             }
-            if (data2 == play_loc_v) { 
+            if (data2 == play_loc_v) {
                 data3 => play_v;
             }
-            if (data2 == stop_loc_v) { 
+            if (data2 == stop_loc_v) {
                 data3 => stop_v;
             }
             if (data2 == nose_loc_v) {
@@ -246,7 +245,7 @@ public class Quneo {
             led(176, circle_led[idx], vel);
         }
     }
-    
+
     // arrow
     fun int arrow(int idx) {
         return arrow_v[idx];
@@ -274,7 +273,7 @@ public class Quneo {
     fun int pad(int idx) {
         return pad_v[idx];
     }
-    
+
     fun int pad(int idx, string mode) {
         if (mode == "v") {
             return pad_v[idx];
@@ -332,7 +331,7 @@ public class Quneo {
         if (mode == "led") {
             led(176, slider_led[idx], 127);
         }
-    }        
+    }
     fun int slider(int idx, string mode, int vel) {
         if (mode == "led") {
             led(176, slider_led[idx], vel);
@@ -355,7 +354,7 @@ public class Quneo {
             led(144, 33, 127);
         }
     }
-    
+
     fun int diamond(string mode, int vel) {
         if (mode == "led") {
             led(144, 33, vel);
@@ -384,7 +383,7 @@ public class Quneo {
             led(144, 34, vel);
         }
     }
-   
+
     // play
     fun int play() {
         return play_v;
@@ -407,7 +406,7 @@ public class Quneo {
             led(144, 35, vel);
         }
     }
-    
+
     // fader
     fun int fader() {
         return fader_x;
@@ -438,16 +437,16 @@ public class Quneo {
 
     fun int nose(string mode) {
         if (mode == "v") {
-            return nose_v; 
+            return nose_v;
         }
         if (mode == "z") {
-            return nose_z; 
+            return nose_z;
         }
         if (mode == "g") {
-            led(144, 44, 127); 
+            led(144, 44, 127);
         }
         if (mode == "r") {
-            led(144, 45, 127); 
+            led(144, 45, 127);
         }
     }
 
@@ -472,7 +471,7 @@ public class Quneo {
 // static int Z;
 
 // fun int play(int mode) [
-//    return Z; 
+//    return Z;
 //}
 
 /*

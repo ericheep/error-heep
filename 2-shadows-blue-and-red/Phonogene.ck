@@ -55,7 +55,7 @@ public class Phonogene extends Chubgraph {
     }
 
     fun void play(int p) {
-        if (p) {
+        if (p == 1) {
             1 => play_active;
             spork ~ playing();
         }
@@ -69,7 +69,7 @@ public class Phonogene extends Chubgraph {
         while(play_active) {
             mic.playPos(0::samp);
             now => time past;
-            grain_time/2 => dur env_time;
+            grain_time/8 => dur env_time;
             // set envelopes
             env.attack(env_time);
             env.release(env_time);

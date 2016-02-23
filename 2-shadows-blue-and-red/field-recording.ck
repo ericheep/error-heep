@@ -1,5 +1,7 @@
 // field-recording.ck
 // Eric Heep
+
+// communication classes
 HandshakeID talk;
 2.5::second => now;
 talk.talk.init();
@@ -7,13 +9,15 @@ talk.talk.init();
 
 2 => int num;
 16 => int leds;
+16 => int pads;
 
 // adjust these fellas
-16.0 => float RMSAdjust;
 16.0 => float DBAdjust;
 1700.0 * 2 => float centroidAdjust;
 1600.0 * 2 => float spreadAdjust;
 
+// midi classes
+Quneo quneo;
 NanoKontrol2 nano;
 
 // led class
@@ -22,7 +26,10 @@ Puck puck[num];
 // audio
 SndBuf field[num];
 Gain gain[num];
-LiSa mic[num];
+Phonogene phono[pads];
+int padLatch[pads];
+
+// mir
 CheapRMS rms[num];
 Features feat[num];
 
@@ -33,6 +40,15 @@ float val[num][leds];
 
 float centroidColor[num];
 float spreadLed[num];
+
+float fieldGain[num];
+float easedFieldGain[num];
+
+// phonogene easing
+float easedGrainSize[pads];
+float grainSize[pads];
+float easedGrainPos[pads];
+float grainPos[pads];
 
 3 => int banks;
 float filterBanks[num][leds];
@@ -51,11 +67,27 @@ float easedSpreadLed[num];
 ["field-1.wav", "field-1.wav"] @=> string file[];
 
 for (int i; i < num; i++) {
+    // led initialize
     puck[i].init(i);
-    field[i] => mic[i] => dac.chan(i);
+
+    // for gain
     field[i] => gain[i] => dac.chan(i);
-    field[i] => feat[i];
-    field[i] => rms[i];
+    gain[i] => feat[i];
+    gain[i] => rms[i];
+    gain[i].gain(0.0);
+
+    // for phonogene
+    for (int j; j < pads/2; j++) {
+        i * pads/2 + j => int which;
+        field[i] => phono[which] => dac.chan(i);
+        phono[which] => feat[i];
+        phono[which] => rms[i];
+        phono[which].gain(0.0);
+
+        // right in the middle
+        0.5 => float easedGrainPos[pads];
+        0.5 => float grainPos[pads];
+    }
 
     // read and start recordings
     me.dir() + file[i] => field[i].read;
@@ -71,7 +103,7 @@ fun void updateFeatures() {
 
         // rms brightness, applied equally to all 16 leds
         for (int j; j < leds; j++) {
-            rms[i].decibel()/RMSAdjust * nano.slider[i * 4] + nano.knob[i * 4] => val[i][j];
+            rms[i].decibel()/DBAdjust * nano.slider[i * 4] + nano.knob[i * 4] => val[i][j];
         }
 
         // centroid and spread
@@ -101,6 +133,7 @@ fun void updateFeatures() {
 
 fun void easing() {
     for (int i; i < num; i++) {
+        // led easing
         for (int j; j < leds; j++) {
             if (easedCentroidColor[i] < centroidColor[i]) {
                 centroidEasingAmount +=> easedCentroidColor[i];
@@ -115,6 +148,42 @@ fun void easing() {
                 spreadEasingAmount -=> easedSpreadLed[i];
             }
         }
+        // grain size/pos easing
+        for (int j; j < leds/2; j++) {
+            i * pads/2 + j => int which;
+
+            if (easedGrainSize[which] < grainSize[which]) {
+                0.1 +=> easedGrainSize[which];
+            }
+            else if (easedGrainSize[which] > grainSize[which]) {
+                0.1 -=> easedGrainSize[which];
+            }
+            if (easedGrainPos[which] < grainPos[which]) {
+                0.1 +=> easedGrainPos[which];
+            }
+            else if (easedGrainPos[which] > grainPos[which]) {
+                0.1 -=> easedGrainPos[which];
+            }
+        }
+        // gain adjustment easing
+        if (easedFieldGain[i] < fieldGain[i]) {
+            0.001 +=> easedFieldGain[i];
+            gain[i].gain(easedFieldGain[i]);
+
+            for (int j; j < pads/2; j++) {
+                i * pads/2 + j => int which;
+                phono[which].gain(easedFieldGain[i] * padLatch[which]);
+            }
+        }
+        else if (easedFieldGain[i] > fieldGain[i]) {
+            0.001 -=> easedFieldGain[i];
+            gain[i].gain(easedFieldGain[i]);
+
+            for (int j; j < pads/2; j++) {
+                i * pads/2 + j => int which;
+                phono[which].gain(easedFieldGain[i] * padLatch[which]);
+            }
+        }
     }
 
 }
@@ -124,10 +193,10 @@ fun void updateColors() {
         for (int j; j < 16; j++) {
 
             // for filterBank stuff
-            Std.scalef(filterBanks[i][j], 0, 127, 127, 84.6) => float mappedColor;
+            Std.scalef(filterBanks[i][j], 0.0, 127.0, 127.0, 84.6) => float mappedColor;
 
             // chooses which led will change
-            Std.scalef(easedSpreadLed[i], 0, 127, 0, 15.99) $ int => int whichLed;
+            Std.scalef(easedSpreadLed[i], 0.0, 127.0, 0.0, 15.99) $ int => int whichLed;
 
             if (j == whichLed) {
                 // restricts range from red to blue
@@ -145,22 +214,53 @@ fun void updateColors() {
     }
 }
 
+fun void loop(int idx, int which, dur length) {
+    phono[which].record(1);
+    length => now;
+    phono[which].record(0);
+
+    gain[idx] =< rms[idx];
+    gain[idx] =< feat[idx];
+    phono[which].play(1);
+    while (padLatch[which]) {
+        1::samp => now;
+    }
+    gain[idx] => rms[idx];
+    gain[idx] => feat[idx];
+    phono[which].play(0);
+}
+
+fun void loopingControl() {
+    for (int i; i < num; i++) {
+        nano.slider[i * 4 + 0]/127.0 => fieldGain[i];
+
+        for (int j; j < pads/2; j++) {
+            i * pads/2 + j => int which;
+            if (quneo.pad(which) > 0 && padLatch[which] == 0) {
+                1 => padLatch[which];
+                spork ~ loop(i, which, ((j + 1) * 75)::ms);
+            }
+            if (quneo.pad(which) == 0 && padLatch[which] == 1) {
+                0 => padLatch[which];
+            }
+
+            quneo.pad(which, "x") => grainSize[which];
+            quneo.pad(which, "y") => grainPos[which];
+            phono[which].grainSize(Std.scalef(easedGrainSize[which], 0.0, 127.0, 0.1, 1.0));
+            phono[which].grainPos(easedGrainPos[which]/127.0);
+        }
+    }
+}
+
 while (true) {
+    // audio manipulation
+    loopingControl();
     // mir analysis
     updateFeatures();
     // ease for smoother transitions
     easing();
     // send hsv values to pucks
     updateColors();
-
-    /*
-    average << filterBanks[0][0];
-    float sum;
-    for (int i; i < average.size(); i++) {
-        average[i] +=> sum;
-    }
-    // <<< filterBanks[0][0], sum/average.size() >>>;
-    */
 
     (1.0/30.0)::second => now;
 }
