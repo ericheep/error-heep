@@ -7,6 +7,8 @@ public class Phonogene extends Chubgraph {
     // sound chain
     inlet => LiSa mic => WinFuncEnv env => outlet;
 
+    1::second => dur grain_time;
+
     // slice array
     dur slc[0];
 
@@ -15,7 +17,7 @@ public class Phonogene extends Chubgraph {
     float pos, grain_size, grain_pos;
     int overdub_active, play_active, rec_active, pos_button;
 
-    dur env_time, rec_time, grain_time, loop_time, end, begin;
+    dur env_time, rec_time, loop_time, end, begin;
     8::second => dur length;
 
     grainSize(1.0);
@@ -69,7 +71,7 @@ public class Phonogene extends Chubgraph {
         while(play_active) {
             mic.playPos(0::samp);
             now => time past;
-            grain_time/8 => dur env_time;
+            grain_time/8 => env_time;
             // set envelopes
             env.attack(env_time);
             env.release(env_time);
@@ -143,6 +145,7 @@ public class Phonogene extends Chubgraph {
         present - past => rec_time;
         mic.loopEnd(rec_time);
         rec_time => loop_time;
+        loop_time => grain_time;
 
         // begining and end for slice duration array
         slc << 0::samp;

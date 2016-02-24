@@ -18,6 +18,7 @@ Machine.add(me.dir() + "/Quneo.ck");
 
 // looping classes
 Machine.add(me.dir() + "/Phonogene.ck");
+Machine.add(me.dir() + "/Sort.ck");
 
 // main program
 3.0::second => now;

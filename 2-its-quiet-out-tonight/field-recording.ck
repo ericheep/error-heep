@@ -12,7 +12,7 @@ talk.talk.init();
 16 => int pads;
 
 // adjust these fellas
-16.0 => float DBAdjust;
+40.0 => float DBAdjust;
 1700.0 * 2 => float centroidAdjust;
 1600.0 * 2 => float spreadAdjust;
 
@@ -25,9 +25,14 @@ Puck puck[num];
 
 // audio
 SndBuf field[num];
+Sort sort[num * 2];
+int arrowLatch[num * 2];
+
 Gain gain[num];
 Phonogene phono[pads];
+WinFuncEnv win[pads];
 int padLatch[pads];
+int offLatch[pads];
 
 // mir
 CheapRMS rms[num];
@@ -37,12 +42,19 @@ Features feat[num];
 float hue[num][leds];
 float sat[num][leds];
 float val[num][leds];
+float phonoVal[num][leds];
 
 float centroidColor[num];
 float spreadLed[num];
 
 float fieldGain[num];
 float easedFieldGain[num];
+
+float sortGain[num * 2];
+float easedSortGain[num * 2];
+
+float phonoGain;
+float easedPhonoGain;
 
 // phonogene easing
 float easedGrainSize[pads];
@@ -79,14 +91,25 @@ for (int i; i < num; i++) {
     // for phonogene
     for (int j; j < pads/2; j++) {
         i * pads/2 + j => int which;
-        field[i] => phono[which] => dac.chan(i);
-        phono[which] => feat[i];
-        phono[which] => rms[i];
+        field[i] => phono[which] => win[which] => dac.chan(i);
+        win[which] => feat[i];
+        win[which] => rms[i];
         phono[which].gain(0.0);
 
         // right in the middle
-        0.5 => float easedGrainPos[pads];
-        0.5 => float grainPos[pads];
+        1.0 => easedGrainPos[which];
+        1.0 => grainPos[which];
+        phono[which].grainSize(1.0);
+        phono[which].grainPos(1.0);
+    }
+
+    // for sort
+    for (int j; j < num; j++) {
+        i * num + j => int which;
+        field[i] => sort[which] => dac.chan(i);
+        sort[which] => feat[i];
+        sort[which] => rms[i];
+        sort[which].gain(0.0);
     }
 
     // read and start recordings
@@ -104,6 +127,7 @@ fun void updateFeatures() {
         // rms brightness, applied equally to all 16 leds
         for (int j; j < leds; j++) {
             rms[i].decibel()/DBAdjust * nano.slider[i * 4] + nano.knob[i * 4] => val[i][j];
+            rms[i].decibel()/DBAdjust * quneo.fader() => phonoVal[i][j];
         }
 
         // centroid and spread
@@ -170,22 +194,36 @@ fun void easing() {
             0.001 +=> easedFieldGain[i];
             gain[i].gain(easedFieldGain[i]);
 
-            for (int j; j < pads/2; j++) {
-                i * pads/2 + j => int which;
-                phono[which].gain(easedFieldGain[i] * padLatch[which]);
-            }
         }
         else if (easedFieldGain[i] > fieldGain[i]) {
             0.001 -=> easedFieldGain[i];
             gain[i].gain(easedFieldGain[i]);
-
-            for (int j; j < pads/2; j++) {
-                i * pads/2 + j => int which;
-                phono[which].gain(easedFieldGain[i] * padLatch[which]);
-            }
         }
     }
-
+    // phonogene gain
+    if (easedPhonoGain < phonoGain) {
+        0.2 +=> easedPhonoGain;
+        for (int j; j < pads; j++) {
+            phono[j].gain((easedPhonoGain * offLatch[j])/127.0);
+        }
+    }
+    if (easedPhonoGain > phonoGain) {
+        0.2 -=> easedPhonoGain;
+        for (int j; j < num * 2; j++) {
+            phono[j].gain((easedPhonoGain * offLatch[j])/127.0);
+        }
+    }
+    for (int i; i < 4; i++) {
+        if (easedSortGain[i] < sortGain[i]) {
+            0.1 +=> easedSortGain[i];
+            sort[i].gain(easedSortGain[i]/127.0);
+        }
+        if (easedSortGain[i] > sortGain[i]) {
+            0.1 -=> easedSortGain[i];
+            sort[i].gain(easedSortGain[i]/127.0);
+        }
+        quneo.slider(i + 4) => sortGain[i];
+    }
 }
 
 fun void updateColors() {
@@ -209,7 +247,8 @@ fun void updateColors() {
             puck[i].color(j,
                         convert(mappedColor, 1023),     // hue
                         255,                            // saturation, will most likely not change
-                        convert(val[i][j], 255));       // value
+                        convert(Math.max(val[i][j], phonoVal[i][j]), 255)    // value
+                        );
         }
     }
 }
@@ -222,12 +261,36 @@ fun void loop(int idx, int which, dur length) {
     gain[idx] =< rms[idx];
     gain[idx] =< feat[idx];
     phono[which].play(1);
+
+    win[which].attack(length * 8);
+    win[which].release(length * 8);
+
+    1 => offLatch[which];
+    win[which].keyOn();
     while (padLatch[which]) {
         1::samp => now;
     }
+    win[which].keyOff();
+    length * 8 => now;
+    0 => offLatch[which];
+
     gain[idx] => rms[idx];
     gain[idx] => feat[idx];
+
     phono[which].play(0);
+}
+
+fun void sortLoop(int idx, int which) {
+    sort[which].stepDuration(Math.random2(30, 60)::ms);
+    sort[which].record(1);
+    while (arrowLatch[which]) {
+        1::ms => now;
+    }
+    sort[which].record(0);
+    sort[which].play(1);
+    while (arrowLatch[which] == 0) {
+        1::ms => now;
+    }
 }
 
 fun void loopingControl() {
@@ -246,11 +309,26 @@ fun void loopingControl() {
 
             quneo.pad(which, "x") => grainSize[which];
             quneo.pad(which, "y") => grainPos[which];
+            quneo.fader() => phonoGain;
             phono[which].grainSize(Std.scalef(easedGrainSize[which], 0.0, 127.0, 0.1, 1.0));
             phono[which].grainPos(easedGrainPos[which]/127.0);
         }
+
+        for (int j; j < num; j++) {
+            i * num + j => int which;
+            if (quneo.arrow(which + 8) > 0 && arrowLatch[which] == 0) {
+                1 => arrowLatch[which];
+                spork ~ sortLoop(i, which);
+            }
+            if (quneo.arrow(which + 8) == 0 && arrowLatch[which] == 1) {
+                0 => arrowLatch[which];
+            }
+        }
     }
 }
+
+// int inc;
+// float average[0];
 
 while (true) {
     // audio manipulation
@@ -262,5 +340,12 @@ while (true) {
     // send hsv values to pucks
     updateColors();
 
+    /* average << rms[0].decibel();
+    float sum;
+    for (int i; i < average.size(); i++) {
+        average[i] +=> sum;
+    }
+    <<< sum/average.size() >>>;
+    */
     (1.0/30.0)::second => now;
 }
