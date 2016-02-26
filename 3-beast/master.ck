@@ -8,4 +8,4 @@ Machine.add(me.dir() + "Actuate.ck");
 Machine.add(me.dir() + "Analyze.ck");
 
 // main script
-Machine.add(me.dir() + "animal.ck");
+Machine.add(me.dir() + "beast.ck");
