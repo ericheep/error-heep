@@ -21,11 +21,10 @@ public class Analyze extends Chubgraph {
         return Std.rmstodb(p.last());
     }
 
-    fun void plugIn() {
-        while (decibel() < 1) {
+    // merely holds until a spike is heard above a certain level
+    fun void decibelSpike(float db) {
+        while (decibel() < db) {
             1::samp => now;
         }
-        <<< "Solenoid", solenoid, "Active" >>>;
-        3::second => now;
     }
 }
