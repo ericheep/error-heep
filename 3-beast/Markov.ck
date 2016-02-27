@@ -40,24 +40,69 @@ public class Markov {
         return outputChain;
     }
 
-    fun float[][] generateTransistionMarix(int inputChain[], int order, int range) {
+    fun float[][] generateCombinations(int order, int range) {
+
+        Math.pow(range, order)$int => int rows;
+        int permutations[range][range];
+
+        int inc;
+
+        for (0 => int i; i < range; i++) {
+            for (0 => int j; j < range; j++) {
+                // inc % range => permutations[j][i];
+                // inc++;
+                // <<< i, j >>>;
+            }
+            // <<< permutations[i][0], permutations[i][1], permutations[i][2] >>>;
+        }
+    }
+
+    fun float[][] generateTransitionMatrix(int inputChain[], int order, int range) {
 
         inputChain.size() => int length;
         float transitionMatrix[Math.pow(range, order)$int][range];
 
+        int row;
+        [0, 1] @=> int combination[];
+
+        int matches[0];
+        // checks if current combination is in input chain
+        for (0 => int j; j < length; j++) {
+            int matchSum;
+
+            for (0 => int i; i < order; i++) {
+                if (inputChain[(length - order + i + j) % length] == combination[i]) {
+                    1 +=> matchSum;
+                }
+            }
+
+            if (matchSum == order) {
+               matches << inputChain[j];
+            }
+        }
+        matches.size() => int size;
+        for (0 => int j; j < size; j++) {
+            1.0/size +=> transitionMatrix[row][matches[j]];
+        }
     }
 }
 
 Markov markov;
 SinOsc sin => dac;
 
-12 => int range;
-5 => int order;
+3 => int range;
+3 => int order;
+Math.pow(range, order)$int => int rows;
+
+markov.generateCombinations(order, range);
+
+/*
 
 // transistion matrix
-float transitionMatrix[Math.pow(range, order)$int][range];
+float transitionMatrix[rows][range];
+// <<< rows, range >>>;
 
-for (0 => int i; i < transitionMatrix.size(); i++) {
+for (0 => int i; i < rows; i++) {
     for (0 => int j; j < range; j++) {
         Math.random2f(0.0, 1.0) => transitionMatrix[i][j];
     }
@@ -65,10 +110,12 @@ for (0 => int i; i < transitionMatrix.size(); i++) {
 
 // original chain, range is the number of
 // rows in a first order chain
-[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11] @=> int chain[];
+[0, 1, 2, 1, 0, 1, 0] @=> int chain[];
 
-markov.generateChain(chain, transitionMatrix, order, range) @=> chain;
+// markov.generateChain(chain, transitionMatrix, order, range) @=> chain;
+markov.generateTransitionMatrix(chain, order, range);
 
+/*
 while (true) {
     for (0 => int i; i < chain.size(); i++) {
         sin.freq(Std.mtof(chain[i] + 60));
@@ -76,3 +123,4 @@ while (true) {
     }
     markov.generateChain(chain, transitionMatrix, order, range) @=> chain;
 }
+*/
