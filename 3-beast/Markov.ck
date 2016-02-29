@@ -40,21 +40,45 @@ public class Markov {
         return outputChain;
     }
 
+    // generates all combinations with repititions of a range of numbers as a matrix
     fun float[][] generateCombinations(int order, int range) {
 
         Math.pow(range, order)$int => int rows;
-        int permutations[range][range];
+        int combinations[rows][range];
+        int inc[range];
+        int recentlyIncremented[range];
+        rows * range => int N;
 
-        int inc;
+        for (0 => int i; i < N; i++) {
+             i => int n;
 
-        for (0 => int i; i < range; i++) {
-            for (0 => int j; j < range; j++) {
-                // inc % range => permutations[j][i];
-                // inc++;
-                // <<< i, j >>>;
-            }
-            // <<< permutations[i][0], permutations[i][1], permutations[i][2] >>>;
         }
+
+        /*
+        for (0 => int i; i < rows; i++) {
+            <<< inc[2], inc[1], inc[0] >>>;
+            for (0 => int j; j < range; j++) {
+                (inc[j] + 1) % range => inc[j];
+                if (recentlyIncremented[j] == 1) {
+                    inc[j]++;
+                }
+            }
+        }
+
+        for (0 => int j; j < rows; j++) {
+
+            <<< add2, add, inc >>>;
+            (inc + 1) % range => inc;
+
+            if (inc == 0) {
+                (add + 1) % range => add;
+                if (add == 0) {
+                    (add2 + 1) % range => add2;
+                }
+            }
+        }
+        */
+        // <<< combinations[i][0], combinations[i][1], combinations[i][2] >>>;
     }
 
     fun float[][] generateTransitionMatrix(int inputChain[], int order, int range) {
@@ -63,7 +87,7 @@ public class Markov {
         float transitionMatrix[Math.pow(range, order)$int][range];
 
         int row;
-        [0, 1] @=> int combination[];
+        [1, 1] @=> int combination[];
 
         int matches[0];
         // checks if current combination is in input chain
@@ -91,16 +115,14 @@ Markov markov;
 SinOsc sin => dac;
 
 3 => int range;
-3 => int order;
+2 => int order;
 Math.pow(range, order)$int => int rows;
 
 markov.generateCombinations(order, range);
 
 /*
-
 // transistion matrix
 float transitionMatrix[rows][range];
-// <<< rows, range >>>;
 
 for (0 => int i; i < rows; i++) {
     for (0 => int j; j < range; j++) {
@@ -115,7 +137,6 @@ for (0 => int i; i < rows; i++) {
 // markov.generateChain(chain, transitionMatrix, order, range) @=> chain;
 markov.generateTransitionMatrix(chain, order, range);
 
-/*
 while (true) {
     for (0 => int i; i < chain.size(); i++) {
         sin.freq(Std.mtof(chain[i] + 60));
@@ -123,4 +144,3 @@ while (true) {
     }
     markov.generateChain(chain, transitionMatrix, order, range) @=> chain;
 }
-*/
