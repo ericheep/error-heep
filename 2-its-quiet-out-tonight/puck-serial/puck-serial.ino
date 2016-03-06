@@ -109,8 +109,7 @@ RGB HSVtoRGB(HSV hsv) {
 }
 
 void setup() {
-  // start serial port at 9600 bps and wait for port to open
-  // might change to a higher baudrate later on
+  // start serial port at 57600
   Serial.begin(57600);
 
   for (int i = 0; i < NUM_LEDS; i++) {
@@ -127,17 +126,14 @@ void setup() {
 void loop() {
   if (Serial.available()) {
     if (Serial.read() == 0xff) {
-      // reads in a two index array from ChucK
+      // reads in a four element array from ChucK
       Serial.readBytes(bytes, 4);
 
-      // bit wise operations
-      // ~~~~~~~~~~~~~~~~~~~
-      // reads the first six bits for the note number
-      // then reads the last ten bits for the note velocity
-      int led = byte(bytes[0]) >> 2;
-      int hue = (byte(bytes[0]) << 8 | byte(bytes[1])) & 1023;
-      int sat = byte(bytes[2]);
-      int val = byte(bytes[3]);
+      // bit unpacking
+      int led = byte(bytes[0]) >> 2; // 0-63
+      int hue = (byte(bytes[0]) << 8 | byte(bytes[1])) & 1023; // 0-1023
+      int sat = byte(bytes[2]); // 0-255
+      int val = byte(bytes[3]); // 0-255
 
       // message required for "handshake" to occur
       // happens once per Arduino at the start of the ChucK serial code

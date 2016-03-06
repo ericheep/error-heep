@@ -5,6 +5,7 @@
 Machine.add(me.dir() + "/Handshake.ck");
 Machine.add(me.dir() + "/HandshakeID.ck");
 Machine.add(me.dir() + "/Puck.ck");
+Machine.add(me.dir() + "/Motor.ck");
 
 // mir classes
 Machine.add(me.dir() + "/Spectral.ck");
