@@ -24,13 +24,11 @@ public class Motor {
         return check;
     }
 
-    // receives OSC and sends out serial
-    fun void color(int motor, int rotations, int direction, int val) {
+    fun void move(int motor, int steps, int direction) {
         // ensuring the proper values get sent
-        rotations % 1024 => rotations;
+        steps % 1024 => steps;
         Std.clamp(direction, 0, 255) => direction;
-        Std.clamp(val, 0, 255) => val;
-
-        talk.talk.packet(port, motor, rotations, direction, val);
+        <<< port, motor, steps, direction, 0 >>>;
+        talk.talk.packet(port, motor, steps, direction, 0);
     }
 }

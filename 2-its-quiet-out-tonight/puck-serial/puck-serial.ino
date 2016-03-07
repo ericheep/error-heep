@@ -11,7 +11,7 @@
 
 // stores our incoming values
 char bytes[2];
-int handshake;
+int handshake = 0;
 
 int LEDS[NUM_LEDS][NUM_TLCS];
 float hues[NUM_LEDS];

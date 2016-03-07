@@ -4,6 +4,7 @@
 
 // ID number of the arduino, cooresponds to a motor
 #define arduinoID 2
+#define NUM_MOTORS 2
 
 // Create the motor shield object with the default I2C address
 Adafruit_MotorShield AFMS = Adafruit_MotorShield();
@@ -11,14 +12,17 @@ Adafruit_MotorShield AFMS = Adafruit_MotorShield();
 // Adafruit_MotorShield AFMS = Adafruit_MotorShield(0x61);
 
 // Connect a stepper motor with 200 steps per revolution (1.8 degree)
-// to motor port #2 (M3 and M4)
 Adafruit_StepperMotor *motorOne = AFMS.getStepper(200, 1);
 
-// motor two burnt out for now, will only code for motor one
+// motor two h-bridge burnt out for now, will only code for motor one
 //Adafruit_StepperMotor *motorTwo = AFMS.getStepper(200, 2);
 
 char bytes[2];
-int handshake;
+int handshake = 0;
+
+int moving[NUM_MOTORS];
+int steps[NUM_MOTORS];
+int dir[NUM_MOTORS];
 
 void setup() {
   // start serial port at 57600
@@ -26,10 +30,24 @@ void setup() {
   // create with the default frequency 1.6KHz
   AFMS.begin();
   // rpm
-  myMotor->setSpeed(10);  // 10 rpm
+  motorOne->setSpeed(10);
+
+  // init
+  for (int i = 0; i < NUM_MOTORS; i++) {
+    moving[i] = 0;
+    steps[i] = 0;
+    dir[i] = 0;
+  }
 }
 
 void loop() {
+  for (int i = 0; i < NUM_MOTORS; i++) {
+    if (moving[i] == 0) {
+      motorOne->step(1, BACKWARD, SINGLE);
+    }
+    moving[i] = 0;
+  }
+
   if (Serial.available()) {
     if (Serial.read() == 0xff) {
       // reads in a four element array from ChucK
@@ -37,34 +55,28 @@ void loop() {
 
       // bit unpacking
       int motor = byte(bytes[0]) >> 2; // 0-63
-      int rotations = (byte(bytes[0]) << 8 | byte(bytes[1])) & 1023; // 0-1023
-      int sat = byte(bytes[2]); // 0-255
+      steps[motor] = (byte(bytes[0]) << 8 | byte(bytes[1])) & 1023; // 0-1023
+      dir[motor] = byte(bytes[2]); // 0-255
       int val = byte(bytes[3]); // 0-255
 
       // message required for "handshake" to occur
       // happens once per Arduino at the start of the ChucK serial code
-      if (motor == 63 && rotations == 1023 && handshake == 0) {
+      if (motor == 63 && steps[motor] == 1023 && handshake == 0) {
         Serial.write(arduinoID);
         handshake = 1;
       }
       else {
-        Tlc.update();
+        moving[0] = 1;
+        moving[1] = 1;
       }
     }
   }
-  //Serial.println("Single coil steps");
-  //myMotor->step(1, FORWARD, SINGLE);
-  //myMotor->step(1, BACKWARD, SINGLE);
-
-  //Serial.println("Double coil steps");
-  //myMotor->step(400, FORWARD, DOUBLE);
-  //myMotor->step(5, BACKWARD, DOUBLE);
-
-  //Serial.println("Interleave coil steps");
-  //myMotor->step(100, FORWARD, INTERLEAVE);
-  //myMotor->step(100, BACKWARD, INTERLEAVE);
-
-  //Serial.println("Microstep steps");
-  //myMotor->step(2, FORWARD, MICROSTEP);
-  //myMotor->step(1, BACKWARD, MICROSTEP);
 }
+
+// other steps in the library, will keep them here for now
+//myMotor->step(400, FORWARD, DOUBLE);
+//myMotor->step(5, BACKWARD, DOUBLE);
+//myMotor->step(100, FORWARD, INTERLEAVE);
+//myMotor->step(100, BACKWARD, INTERLEAVE);
+//myMotor->step(2, FORWARD, MICROSTEP);
+//myMotor->step(1, BACKWARD, MICROSTEP);
