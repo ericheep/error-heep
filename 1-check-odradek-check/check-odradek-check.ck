@@ -15,8 +15,6 @@ NanoKontrol2 nano;
 // 7, speed gate, right
 // 8, hard stop on all volume, volume fade, might not use
 
-// WHERE TO PUT FFTNOISE
-
 // speech
 adc => Gain input;
 
@@ -29,7 +27,7 @@ input => reich => dac;
 // reich initialize functions
 reich.gain(0.0);
 reich.randomPos(1);
-reich.voices(16);
+reich.voices(32);
 reich.bi(1);
 reich.randomPos(1);
 
@@ -59,13 +57,12 @@ float ease_s_vol;
 
 // ~ LiSaCluster ~~~~~~~~~~~~~~~~~~~~~~~
 LiSaCluster2 lisaCluster[2];
-Pan2 lisaClusterPan[2];
 lisaCluster.size() => int lc_num;
 
 // LiSaCluster setup
 for (0 => int i; i < lc_num; i++) {
     // lisaCluster sound chain
-    input => lisaCluster[i] => lisaClusterPan[i] => dac;
+    input => lisaCluster[i];
     // lisaCluster initialize functions
     lisaCluster[i].fftSize(1024);
     lisaCluster[i].gain(0.0);
@@ -80,7 +77,8 @@ lisaCluster[0].crest(1);
 lisaCluster[1].hfc(1);
 lisaCluster[1].subbandCentroids(1);
 
-int lc_vol[lc_num];
+float lc_vol[lc_num];
+float ease_lc_vol[lc_num];
 int lc_latch[lc_num];
 int lc_state[lc_num];
 int lc_pan[lc_num];
@@ -162,14 +160,15 @@ fun void lisaClusterParams() {
             else lisaCluster[i].gain(0.0);
         }
         // gain
-        if (nano.slider[i + positionOffset] != lc_vol[i]) {
-            nano.slider[i + positionOffset] => lc_vol[i];
-            lisaCluster[i].gain(lc_vol[i]/127.0);
+        if (nano.slider[i + positionOffset] != ease_lc_vol[i]) {
+            nano.slider[i + positionOffset] => ease_lc_vol[i];
+            lisaCluster[i].vol(lc_vol[i]/127.0);
+            // <<< i, lc_vol[i]/127.0 >>>;
         }
 
         if (nano.knob[i + positionOffset] != lc_cluster[i]) {
             nano.knob[i + positionOffset] => lc_cluster[i];
-            lisaCluster[i].gain(lc_cluster[i]/127.0);
+            lisaCluster[i].vol(lc_cluster[i]/127.0);
         }
         // record
         if (nano.rec[i + positionOffset] && lc_latch[i] == 0) {
@@ -228,14 +227,25 @@ fun void sortParams() {
 }
 
 fun void easing() {
-    0.1 => float increment;
+    0.03 => float increment;
     if (s_vol < ease_s_vol) {
         s_vol + increment => s_vol;
-        sort.gain(s_vol);
+        sort.gain(s_vol/127.0);
     }
     else if (s_vol > ease_s_vol) {
         s_vol - increment => s_vol;
-        sort.gain(s_vol);
+        sort.gain(s_vol/127.0);
+    }
+
+    for (0 => int i; i < lc_num; i++) {
+        if (lc_vol[i] < ease_lc_vol[i]) {
+            lc_vol[i] + increment => lc_vol[i];
+            lisaCluster[i].gain(lc_vol[i]/127.0);
+        }
+        else if (lc_vol[i] > ease_lc_vol[i]) {
+            lc_vol[i] - increment => lc_vol[i];
+            lisaCluster[i].gain(lc_vol[i]/127.0);
+        }
     }
 }
 

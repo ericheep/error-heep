@@ -27,6 +27,12 @@ public class LiSaCluster2 extends Chubgraph{
         p[i].pan(0.0);
     }
 
+    fun void vol(float v) {
+        for (int i; i < mic.cap(); i++) {
+            p[i].gain(v);
+        }
+    }
+
     p[0].pan(-1.0);
     p[1].pan(1.0);
 

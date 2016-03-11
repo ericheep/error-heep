@@ -12,7 +12,7 @@ public class Reich extends Chubgraph {
     8::second => dur buffer;
 
     fun void duration(dur length) {
-        mic.duration(length); 
+        mic.duration(length);
     }
 
     fun void record(int rcrd) {
@@ -20,7 +20,7 @@ public class Reich extends Chubgraph {
             spork ~ recording();
         }
         if (rcrd == 0) {
-            0 => recOn; 
+            0 => recOn;
         }
     }
 
@@ -57,7 +57,6 @@ public class Reich extends Chubgraph {
             }
             mic.loop(i, 1);
             mic.bi(i, bounce);
-            mic.loop(i, 1);
             mic.loopEnd(i, recTime);
         }
         while (playOn == 1) {
@@ -82,7 +81,7 @@ public class Reich extends Chubgraph {
     }
 
     fun void voices(int num) {
-        num => numVoices; 
+        num => numVoices;
     }
 
     fun void randomPos(int r) {
