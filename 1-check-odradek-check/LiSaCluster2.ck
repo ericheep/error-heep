@@ -1,7 +1,7 @@
-// LiSaCluster.ck
+// LiSaCluster2.ck
 // Eric Heep & Daniel Reyes
 
-public class LiSaCluster extends Chubgraph{
+public class LiSaCluster2 extends Chubgraph{
 
     // mir classes
     Mel m;
@@ -16,14 +16,19 @@ public class LiSaCluster extends Chubgraph{
     // sound chain
     inlet => FFT fft =^ RMS r => blackhole;
 
-    LiSa mic[7];
-    Pan2 p[7];
-    for (int i; i < mic.cap(); i++) {
-        inlet => mic[i] => p[i];
+    LiSa mic[2];
+    Pan2 p[2];
+    WinFuncEnv env[2];
+
+    for (0 => int i; i < mic.cap(); i++) {
+        inlet => mic[i] => env[i] => p[i];
         p[i].left => dac.left;
         p[i].right => dac.right;
         p[i].pan(0.0);
     }
+
+    p[0].pan(-1.0);
+    p[1].pan(1.0);
 
     UAnaBlob blob;
     UAnaBlob rms_blob;
@@ -89,12 +94,6 @@ public class LiSaCluster extends Chubgraph{
         if (on) {
             [0.0, 100.0, 500.0, 1000.0, 10000.0, 22050.0] @=> subband_filts;
             subband_filts.cap() - 1 => subcent_feats;
-        }
-    }
-
-    fun void vol(float v) {
-        for (int i; i < p.size(); i++) {
-            mic[i].gain(v);
         }
     }
 
@@ -211,13 +210,13 @@ public class LiSaCluster extends Chubgraph{
         s => step_length;
     }
 
-    fun void pan(float val) {
+    /*fun void pan(float val) {
         float mod;
         for (int i; i < play_clusters; i++) {
             (val + 1.0) * 2.0 * 1.0/play_clusters * i % 2.0 => mod;
             p[i].pan(mod - 1.0);
         }
-    }
+    }*/
 
     // playback
     fun void play(int p) {
@@ -237,13 +236,17 @@ public class LiSaCluster extends Chubgraph{
     fun void playing() {
         // returns true after a pairing idx is found
         int check;
+        step_length * 0.25 => dur attack;
+        step_length * 0.25 => dur release;
+
         for (int i; i < play_clusters; i++) {
             mic[i].play(1);
         }
         while (play_active) {
             for (int i; i < play_clusters; i++) {
                 0 => check;
-                mic[i].rampUp(10::ms);
+                env[i].attack(attack);
+                env[i].keyOn();
                 while (check == 0) {
                     Math.random2(0, idx.cap() - 1) => int rand;
                     if (idx[rand] == i) {
@@ -252,11 +255,12 @@ public class LiSaCluster extends Chubgraph{
                     }
                 }
             }
-            step_length - 10::ms => now;
+            step_length - release => now;
             for (int i; i < play_clusters; i++) {
-                mic[i].rampDown(10::ms);
+                env[i].release(release);
+                env[i].keyOff();
             }
-            10::ms => now;
+            release => now;
         }
     }
 

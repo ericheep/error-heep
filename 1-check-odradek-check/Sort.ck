@@ -2,8 +2,8 @@
 
 public class Sort extends Chubgraph {
     // sound chain
-    inlet => LiSa mic => outlet;
-    
+    inlet => LiSa mic => WinFuncEnv env => outlet;
+
     dur step_dur, running_time;
     int rec_active, play_active;
     int max, min, inc, direction;
@@ -16,7 +16,7 @@ public class Sort extends Chubgraph {
     fun void maxPos(float m) {
         (m * arg.cap()) $ int => max;
     }
-    
+
     fun void minPos(float m) {
         (m * arg.cap()) $ int => min;
     }
@@ -30,8 +30,8 @@ public class Sort extends Chubgraph {
     fun void maxDuration(dur d) {
         mic.duration(d);
     }
-    
-    // index sorting 
+
+    // index sorting
     fun int[] argSort(float x[]) {
         int idx[x.cap()];
         for (int i; i < x.cap(); i++) {
@@ -50,17 +50,17 @@ public class Sort extends Chubgraph {
     }
 
     // math
-    fun int[] findMeans(dur s) {  
+    fun int[] findMeans(dur s) {
         (running_time/s) $ int => int div;
         float means[0];
-        
+
         s/div => dur chunk;
 
         // finds the means of segments
         for (int i; i < div; i++) {
             float sum;
             for (int j; j < div; j++) {
-                Math.fabs(mic.valueAt((j + (i * div)) * chunk)) +=> sum; 
+                Math.fabs(mic.valueAt((j + (i * div)) * chunk)) +=> sum;
             }
             means << sum/(s/ms);
         }
@@ -80,19 +80,25 @@ public class Sort extends Chubgraph {
     fun void playing() {
         mic.play(1);
         arg.cap() => hard_max;
+
+        step_dur * 0.25 => dur attack;
+        step_dur * 0.25 => dur release;
+
+        env.attack(attack);
+        env.release(release);
+
         while(play_active) {
-            mic.rampUp(20::ms);
+            env.keyOn();
             if (inc < arg.cap() || inc > -1) {
-                //<<< "Inc:", inc, "Min", min, "Max:", max, "" >>>;
-                mic.playPos(step_dur * arg[inc]); 
+                mic.playPos(step_dur * arg[inc]);
             }
-            step_dur - 20::ms => now;
-            mic.rampDown(20::ms);
-            20::ms => now;
+            step_dur - attack => now;
+            env.keyOff();
+            release => now;
 
             direction +=> inc;
             if (inc == hard_max - 1 || inc == max) {
-                -1 => direction; 
+                -1 => direction;
             }
             if (inc == 0 || inc == min) {
                 1 => direction;
@@ -109,7 +115,7 @@ public class Sort extends Chubgraph {
         if (r == 0) {
             0 => rec_active;
         }
-        
+
     }
 
     fun void recording() {
