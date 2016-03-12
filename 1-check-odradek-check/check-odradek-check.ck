@@ -29,9 +29,6 @@ float ease_globalMix;
 0.0 => float inputMix;
 1.0 => float noiseMix;
 
-// for gates
-1.0 => float inputGate;
-1.0 => float noiseGate;
 
 // ~ Gate ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 2 => int g_num;
@@ -80,9 +77,12 @@ dur c_dur;
 // ~ Reich ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Reich reich;
 Reich noiseReich;
+Gain reichGains[2];
 
 // reich sound chain
-fft => noiseReich => dac;
+fft => noiseReich => reichGains[0] => dac.left;
+noiseReich => reichGains[1] => dac.right;
+
 // reich initialize functions
 noiseReich.gain(0.0);
 noiseReich.randomPos(1);
@@ -91,7 +91,9 @@ noiseReich.bi(1);
 noiseReich.randomPos(1);
 
 // reich sound chain
-input => reich => dac;
+input => reich => reichGains[0] => dac.left;
+reich => reichGains[1] => dac.right;
+
 // reich initialize functions
 reich.gain(0.0);
 reich.randomPos(1);
@@ -108,15 +110,17 @@ int r_state;
 // ~ Sort ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Sort sort;
 Pan2 panSort;
+Gain sortGains[2];
 
 // sort sound chain
-input => sort => panSort => dac;
+input => sort => panSort => sortGains[0] => dac.left;
+panSort => sortGains[1] => dac.right;
 sort.stepDuration(50::ms);
 
 Sort noiseSort;
 
 // sort sound chain
-fft => sort => panSort => dac;
+fft => noiseSort => panSort;
 noiseSort.stepDuration(50::ms);
 
 float s_vol;
@@ -211,7 +215,6 @@ fun void checkRecord() {
         1::samp => now;
     }
     now - past => c_dur;
-    <<< c_dur/second >>>;
 
     for (0 => int i; i < c_num; i++) {
         check[i].record(0);
@@ -404,15 +407,6 @@ fun void sortParams() {
         noiseSort.play(1);
         0 => s_latch;
     }
-    // spin
-    /*if (i == 0 && s_pan[i] != 0.0) {
-        (s_mod[i] + s_spin[i]) % 1.0 => s_mod[i];
-        s_mp[i].pan(s_mod[i] * 2.0 - 1.0);
-    }
-    else if (i == 1 && s_pan[i] != 0.0) {
-        (s_mod[i] + s_spin[i]) % 1.0 => s_mod[i];
-        s_mp[i].pan((s_mod[i] * -1.0 + 1.0) * 2.0 - 1.0);
-    }*/
 }
 
 fun void easing() {
@@ -449,13 +443,13 @@ fun void easing() {
 
     if (globalMix < ease_globalMix) {
         globalMix + increment => globalMix;
-        globalMix/127.0 => noiseMix;
-        1.0 - globalMix/127.0 => inputMix;
+        globalMix/127.0 => inputMix;
+        1.0 - globalMix/127.0 => noiseMix;
     }
     else if (globalMix > ease_globalMix) {
         globalMix - increment => globalMix;
-        globalMix/127.0 => noiseMix;
-        1.0 - globalMix/127.0 => inputMix;
+        globalMix/127.0 => inputMix;
+        1.0 - globalMix/127.0 => noiseMix;
     }
 
     for (0 => int i; i < g_num; i++) {
@@ -477,26 +471,28 @@ fun void updateGains() {
     }
 
     // reich
-    reich.gain(r_vol/127.0 * globalGain * inputMix * inputGate);
-    noiseReich.gain(r_vol/127.0 * globalGain * noiseMix * noiseGate);
+    reich.gain(r_vol/127.0 * globalGain * inputMix);
+    noiseReich.gain(r_vol/127.0 * globalGain * noiseMix);
 
     // sort
-    sort.gain(s_vol/127.0 * globalGain * inputMix * inputGate);
-    noiseSort.gain(s_vol/127.0 * globalGain * noiseMix * noiseGate);
+    sort.gain(s_vol/127.0 * globalGain * inputMix);
+    noiseSort.gain(s_vol/127.0 * globalGain * noiseMix);
 
     // lisaCluster
     for (0 => int i; i < lc_num; i++) {
-        lisaCluster[i].vol(lc_vol[i]/127.0 * globalGain * inputMix * inputGate);
-        noiseLisaCluster[i].vol(lc_vol[i]/127.0 * globalGain * noiseMix * noiseGate);
+        lisaCluster[i].vol(lc_vol[i]/127.0 * globalGain * inputMix);
+        noiseLisaCluster[i].vol(lc_vol[i]/127.0 * globalGain * noiseMix);
     }
 }
 
 fun void globalParams() {
     if (nano.stop) {
         0.0 => globalGain;
+        fft.gain(0.0);
     }
     if (nano.play) {
         1.0 => globalGain;
+        fft.gain(1.0);
     }
     if (nano.slider[5] != ease_g_rate[0]) {
         nano.slider[5] => ease_g_rate[0];
@@ -511,22 +507,26 @@ fun void globalParams() {
 
 
 fun void allGating(int idx) {
-    4.0::second => dur gateMax;
-    4.0::second => dur gateTime;
+    5.0::second => dur gateMax;
+    5.0::second => dur gateTime;
     while (true) {
         Math.pow(g_rate[idx]/127.0, 3) * gateMax + 10::ms => gateTime;
-        if (g_rate[idx] != 0) {
+        if (ease_g_rate[idx] != 0) {
             0.0 => checkGate[idx];
             0.0 => noiseCheckGate[idx];
+            0.0 => sortGains[idx].gain;
+            0.0 => reichGains[idx].gain;
             for (0 => int i; i < lc_num; i++) {
                 lisaCluster[i].panVol(idx, 0.0);
                 noiseLisaCluster[i].panVol(idx, 0.0);
             }
         }
         gateTime => now;
-        if (g_rate[idx] != 0) {
+        if (ease_g_rate[idx] != 0) {
             1.0 => checkGate[idx];
             1.0 => noiseCheckGate[idx];
+            1.0 => sortGains[idx].gain;
+            1.0 => reichGains[idx].gain;
             for (0 => int i; i < lc_num; i++) {
                 lisaCluster[i].panVol(idx, 1.0);
                 noiseLisaCluster[i].panVol(idx, 1.0);
