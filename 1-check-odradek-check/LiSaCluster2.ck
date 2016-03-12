@@ -19,18 +19,24 @@ public class LiSaCluster2 extends Chubgraph{
     LiSa mic[2];
     Pan2 p[2];
     WinFuncEnv env[2];
+    float panVols[2];
 
     for (0 => int i; i < mic.cap(); i++) {
         inlet => mic[i] => env[i] => p[i];
         p[i].left => dac.left;
         p[i].right => dac.right;
         p[i].pan(0.0);
+        1.0 => panVols[i];
     }
 
     fun void vol(float v) {
         for (int i; i < mic.cap(); i++) {
-            p[i].gain(v);
+            p[i].gain(v * panVols[i]);
         }
+    }
+
+    fun void panVol(int idx, float v) {
+        v => panVols[idx];
     }
 
     p[0].pan(-1.0);

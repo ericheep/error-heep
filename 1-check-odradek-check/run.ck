@@ -16,7 +16,6 @@ Machine.add(me.dir() + "/LiSaCluster2.ck");
 Machine.add(me.dir() + "/Reich.ck");
 Machine.add(me.dir() + "/FFTNoise.ck");
 Machine.add(me.dir() + "/Sort.ck");
-Machine.add(me.dir() + "/Micro.ck");
 
 // midi controller class
 Machine.add(me.dir() + "/NanoKontrol2.ck");

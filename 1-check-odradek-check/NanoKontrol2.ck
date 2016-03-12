@@ -7,6 +7,8 @@ public class NanoKontrol2 {
     int knob[9];
     int slider[9];
 
+    int stop, play;
+
     int port;
     MidiIn min;
     MidiMsg msg;
@@ -42,6 +44,12 @@ public class NanoKontrol2 {
                 if (data2 == 64 + i) {
                     data3 => rec[i];
                 }
+            }
+            if (data2 == 41) {
+                data3 => play;
+            }
+            if (data2 == 42) {
+                data3 => stop;
             }
         }
     }

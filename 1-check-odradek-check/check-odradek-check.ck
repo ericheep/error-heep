@@ -16,11 +16,79 @@ NanoKontrol2 nano;
 // 8, hard stop on all volume, volume fade, might not use
 
 // speech
-adc => Gain input;
+adc => Gain input => Pan2 inputPan => dac;
+1.0 => float globalGain;
+
+// ~ FFTNoise ~~~~~~~~~~~~~~~~~~~~~~~~~~
+adc => FFTNoise fft => Pan2 fftPan => dac;
+fft.listen(1);
+
+// for balancing the two
+float globalMix;
+float ease_globalMix;
+0.0 => float inputMix;
+1.0 => float noiseMix;
+
+// for gates
+1.0 => float inputGate;
+1.0 => float noiseGate;
+
+// ~ Gate ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+2 => int g_num;
+float g_rate[g_num];
+float ease_g_rate[g_num];
 
 
-// ~ Reich ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// ~ Check ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+2 => int c_num;
+
+LiSa check[c_num];
+LiSa noiseCheck[c_num];
+Pan2 checkPan[c_num];
+Pan2 noiseCheckPan[c_num];
+
+float checkGate[c_num];
+float noiseCheckGate[c_num];
+
+for (0 => int i; i < c_num; i++) {
+    input => check[i] => checkPan[i] => dac;
+    fft => noiseCheck[i] => noiseCheckPan[i] => dac;
+    check[i].duration(3::second);
+    noiseCheck[i].duration(3::second);
+    check[i].loop(0);
+    noiseCheck[i].loop(0);
+    check[i].gain(0.0);
+    noiseCheck[i].gain(0.0);
+}
+
+checkPan[0].pan(-1.0);
+noiseCheckPan[0].pan(-1.0);
+
+checkPan[1].pan(1.0);
+noiseCheckPan[1].pan(1.0);
+
+int c_state;
+int c_recordActive;
+int c_playActive;
+int c_latch;
+float c_vol;
+float ease_c_vol;
+float c_space;
+dur c_dur;
+
+
+// ~ Reich ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Reich reich;
+Reich noiseReich;
+
+// reich sound chain
+fft => noiseReich => dac;
+// reich initialize functions
+noiseReich.gain(0.0);
+noiseReich.randomPos(1);
+noiseReich.voices(32);
+noiseReich.bi(1);
+noiseReich.randomPos(1);
 
 // reich sound chain
 input => reich => dac;
@@ -45,6 +113,12 @@ Pan2 panSort;
 input => sort => panSort => dac;
 sort.stepDuration(50::ms);
 
+Sort noiseSort;
+
+// sort sound chain
+fft => sort => panSort => dac;
+noiseSort.stepDuration(50::ms);
+
 float s_vol;
 int s_state;
 int s_latch;
@@ -59,23 +133,33 @@ float ease_s_vol;
 LiSaCluster2 lisaCluster[2];
 lisaCluster.size() => int lc_num;
 
+LiSaCluster2 noiseLisaCluster[lc_num];
+
 // LiSaCluster setup
 for (0 => int i; i < lc_num; i++) {
     // lisaCluster sound chain
     input => lisaCluster[i];
+    fft => noiseLisaCluster[i];
     // lisaCluster initialize functions
     lisaCluster[i].fftSize(1024);
     lisaCluster[i].gain(0.0);
     lisaCluster[i].numClusters(2);
+    noiseLisaCluster[i].fftSize(1024);
+    noiseLisaCluster[i].gain(0.0);
+    noiseLisaCluster[i].numClusters(2);
 }
 
 // features for first cluster
 lisaCluster[0].centroid(1);
 lisaCluster[0].crest(1);
+noiseLisaCluster[0].centroid(1);
+noiseLisaCluster[0].crest(1);
 
 // features for second cluster
 lisaCluster[1].hfc(1);
 lisaCluster[1].subbandCentroids(1);
+noiseLisaCluster[1].hfc(1);
+noiseLisaCluster[1].subbandCentroids(1);
 
 float lc_vol[lc_num];
 float ease_lc_vol[lc_num];
@@ -85,14 +169,71 @@ int lc_pan[lc_num];
 int lc_cluster[lc_num];
 
 
-// ~ FFTNoise ~~~~~~~~~~~~~~~~~~~~~~~~~~
-input => FFTNoise fft => Pan2 fftPan;
+// ~ SpeedGate
+float sg_rate;
+float sg_vol;
+float ease_sg_vol;
 
-int fft_vol;
-int fft_state;
-int fft_pan;
-float fft_chance;
+.5 => c_space;
 
+// Check controls
+fun void checkParams() {
+    0 => int position;
+    if (nano.rec[position] && c_latch == 0) {
+        1 => c_recordActive;
+        0 => c_playActive;
+        1 => c_latch;
+        spork ~ checkRecord();
+    }
+    if (nano.rec[position] == 0 && c_latch) {
+        0 => c_recordActive;
+        0 => c_latch;
+        spork ~ checkPlay();
+    }
+    if (nano.knob[position] != c_space) {
+        nano.knob[position] => c_space;
+    }
+    // gain
+    if (nano.slider[position] != ease_c_vol) {
+        nano.slider[position] => ease_c_vol;
+    }
+}
+
+fun void checkRecord() {
+    for (0 => int i; i < c_num; i++) {
+        check[i].record(1);
+        noiseCheck[i].record(1);
+    }
+
+    now => time past;
+
+    while (c_recordActive) {
+        1::samp => now;
+    }
+    now - past => c_dur;
+    <<< c_dur/second >>>;
+
+    for (0 => int i; i < c_num; i++) {
+        check[i].record(0);
+        noiseCheck[i].record(0);
+    }
+}
+
+fun void checkPlay() {
+    1 => c_playActive;
+    while (c_playActive) {
+        check[0].play(1);
+        noiseCheck[0].play(1);
+        check[0].playPos(0::samp);
+        noiseCheck[0].playPos(0::samp);
+        c_dur * (c_space/127.0 * 20 + 0.5) => now;
+        check[1].play(1);
+        noiseCheck[1].play(1);
+        check[1].playPos(0::samp);
+        noiseCheck[1].playPos(0::samp);
+        c_dur * (c_space/127.0 * 20 + 0.5) => now;
+    }
+}
 
 // Reich controls
 fun void reichParams() {
@@ -101,28 +242,38 @@ fun void reichParams() {
     if (nano.mute[positionOffset] != r_state) {
         nano.mute[positionOffset] => r_state;
         // turns on/off gain
-        if (r_state) reich.gain(r_vol);
-        else reich.gain(0.0);
+        if (r_state) {
+            reich.gain(r_vol);
+            noiseReich.gain(r_vol);
+        }
+        else {
+            reich.gain(0.0);
+            noiseReich.gain(0.0);
+        }
     }
     // speed
     if (nano.knob[positionOffset] != r_spd) {
         nano.knob[positionOffset] => r_spd;
         reich.speed(r_spd/127.0 * 2.0);
+        noiseReich.speed(r_spd/127.0 * 2.0);
     }
     // gain
     if (nano.slider[positionOffset] != r_vol) {
         nano.slider[positionOffset] => r_vol;
-        reich.gain(r_vol/127.0);
     }
     // record
     if (nano.rec[positionOffset] && r_latch == 0) {
         reich.play(0);
         reich.record(1);
+        noiseReich.play(0);
+        noiseReich.record(1);
         1 => r_latch;
     }
     if (nano.rec[positionOffset] == 0 && r_latch) {
         reich.record(0);
         reich.play(1);
+        noiseReich.record(0);
+        noiseReich.play(1);
         0 => r_latch;
     }
 }
@@ -146,6 +297,26 @@ fun void reichWobble() {
     }
 }
 
+// input/FFTNoise panning
+fun void fftWobble() {
+    [0.5, 10.0] @=> float panResetTimes[];
+    0.2 => float panRange;
+    while (true) {
+        Math.random2f(panResetTimes[0], panResetTimes[1])::second => dur panReset;
+        now => time start;
+        0.0 => float pan;
+        while (now < start + panReset) {
+            if (pan > panRange) {
+                pan - panRange * 2.0 => pan;
+            }
+            (pan + 0.001) => pan;
+            fftPan.pan(pan);
+            inputPan.pan(pan);
+            1::ms => now;
+        }
+    }
+}
+
 // LiSaCluster controls
 fun void lisaClusterParams() {
     3 => int positionOffset;
@@ -156,30 +327,38 @@ fun void lisaClusterParams() {
         if (nano.mute[i + positionOffset] != lc_state[i]) {
             nano.mute[i + positionOffset] => lc_state[i];
             // turns on/off gain
-            if (lc_state[i]) lisaCluster[i].gain(lc_vol[i]);
-            else lisaCluster[i].gain(0.0);
+            if (lc_state[i]) {
+                lisaCluster[i].gain(lc_vol[i]);
+                noiseLisaCluster[i].gain(lc_vol[i]);
+            }
+            else {
+                lisaCluster[i].gain(0.0);
+                noiseLisaCluster[i].gain(0.0);
+            }
         }
         // gain
         if (nano.slider[i + positionOffset] != ease_lc_vol[i]) {
             nano.slider[i + positionOffset] => ease_lc_vol[i];
-            lisaCluster[i].vol(lc_vol[i]/127.0);
-            // <<< i, lc_vol[i]/127.0 >>>;
         }
 
         if (nano.knob[i + positionOffset] != lc_cluster[i]) {
             nano.knob[i + positionOffset] => lc_cluster[i];
-            lisaCluster[i].vol(lc_cluster[i]/127.0);
         }
         // record
         if (nano.rec[i + positionOffset] && lc_latch[i] == 0) {
             lisaCluster[i].stepLength(Math.random2f(stepLengths[0], stepLengths[1])::ms);
             lisaCluster[i].play(0);
             lisaCluster[i].record(1);
+            noiseLisaCluster[i].stepLength(Math.random2f(stepLengths[0], stepLengths[1])::ms);
+            noiseLisaCluster[i].play(0);
+            noiseLisaCluster[i].record(1);
             1 => lc_latch[i];
         }
         if (nano.rec[i + positionOffset] == 0 && lc_latch[i]) {
             lisaCluster[i].record(0);
             lisaCluster[i].play(1);
+            noiseLisaCluster[i].record(0);
+            noiseLisaCluster[i].play(1);
             0 => lc_latch[i];
         }
     }
@@ -192,8 +371,14 @@ fun void sortParams() {
     if (nano.mute[positionOffset] != s_state) {
         nano.mute[positionOffset] => s_state;
         // turns on/off gain
-        if (s_state) sort.gain(s_vol);
-        else sort.gain(0.0);
+        if (s_state) {
+            sort.gain(s_vol);
+            noiseSort.gain(s_vol);
+        }
+        else {
+            sort.gain(0.0);
+            noiseSort.gain(0.0);
+        }
     }
     // gain
     if (nano.slider[positionOffset] != ease_s_vol) {
@@ -208,11 +393,15 @@ fun void sortParams() {
     if (nano.rec[positionOffset] && s_latch == 0) {
         sort.play(0);
         sort.record(1);
+        noiseSort.play(0);
+        noiseSort.record(1);
         1 => s_latch;
     }
     if (nano.rec[positionOffset] == 0 && s_latch) {
         sort.record(0);
         sort.play(1);
+        noiseSort.record(0);
+        noiseSort.play(1);
         0 => s_latch;
     }
     // spin
@@ -227,113 +416,141 @@ fun void sortParams() {
 }
 
 fun void easing() {
-    0.03 => float increment;
+    // easing amount
+    0.04 => float increment;
+
+    // check
+    for (0 => int i; i < c_num; i++) {
+        if (c_vol < ease_c_vol) {
+            c_vol + increment => c_vol;
+        }
+        if (c_vol > ease_c_vol) {
+            c_vol - increment => c_vol;
+        }
+    }
+
+    // sort
     if (s_vol < ease_s_vol) {
         s_vol + increment => s_vol;
-        sort.gain(s_vol/127.0);
     }
     else if (s_vol > ease_s_vol) {
         s_vol - increment => s_vol;
-        sort.gain(s_vol/127.0);
     }
 
+    // lisaCluster
     for (0 => int i; i < lc_num; i++) {
         if (lc_vol[i] < ease_lc_vol[i]) {
             lc_vol[i] + increment => lc_vol[i];
-            lisaCluster[i].gain(lc_vol[i]/127.0);
         }
         else if (lc_vol[i] > ease_lc_vol[i]) {
             lc_vol[i] - increment => lc_vol[i];
-            lisaCluster[i].gain(lc_vol[i]/127.0);
+        }
+    }
+
+    if (globalMix < ease_globalMix) {
+        globalMix + increment => globalMix;
+        globalMix/127.0 => noiseMix;
+        1.0 - globalMix/127.0 => inputMix;
+    }
+    else if (globalMix > ease_globalMix) {
+        globalMix - increment => globalMix;
+        globalMix/127.0 => noiseMix;
+        1.0 - globalMix/127.0 => inputMix;
+    }
+
+    for (0 => int i; i < g_num; i++) {
+        if (g_rate[i] < ease_g_rate[i]) {
+            g_rate[i] + increment => g_rate[i];
+        }
+        else if (g_rate[i] > ease_g_rate[i]) {
+            g_rate[i] - increment => g_rate[i];
         }
     }
 }
 
-/*
-// FFTNoise controls
-fun void fftParams() {
-    // active/inactive
-    if (n.top[6] != fn_state) {
-        n.top[6] => fn_state;
-        // turns on/off gain
-        if (fn_state) fn_mp.vol(1.0);
-        else fn_mp.vol(0.0);
+// one function to rule them all
+fun void updateGains() {
+    // check
+    for (0 => int i; i < c_num; i++) {
+        check[i].gain(c_vol/127.0 * globalGain * inputMix * checkGate[i]);
+        noiseCheck[i].gain(c_vol/127.0 * globalGain * noiseMix * noiseCheckGate[i]);
     }
-    // gain
-    if (n.slider[6] != fn_vol) {
-        n.slider[6] => fn_vol;
-        fn.gain(fn_vol/127.0);
-        if (fn_vol == 0) fn.listen(0);
-        else fn.listen(1);
-    }
-    if (n.knob[6] != fn_pan) {
-        n.knob[6] => fn_pan;
-        fn_pan/127.0 => fn_chance;
 
+    // reich
+    reich.gain(r_vol/127.0 * globalGain * inputMix * inputGate);
+    noiseReich.gain(r_vol/127.0 * globalGain * noiseMix * noiseGate);
+
+    // sort
+    sort.gain(s_vol/127.0 * globalGain * inputMix * inputGate);
+    noiseSort.gain(s_vol/127.0 * globalGain * noiseMix * noiseGate);
+
+    // lisaCluster
+    for (0 => int i; i < lc_num; i++) {
+        lisaCluster[i].vol(lc_vol[i]/127.0 * globalGain * inputMix * inputGate);
+        noiseLisaCluster[i].vol(lc_vol[i]/127.0 * globalGain * noiseMix * noiseGate);
     }
 }
 
-// FTTNoise panning
-fun void fftSpin() {
-    float pan;
+fun void globalParams() {
+    if (nano.stop) {
+        0.0 => globalGain;
+    }
+    if (nano.play) {
+        1.0 => globalGain;
+    }
+    if (nano.slider[5] != ease_g_rate[0]) {
+        nano.slider[5] => ease_g_rate[0];
+    }
+    if (nano.slider[6] != ease_g_rate[1]) {
+        nano.slider[6] => ease_g_rate[1];
+    }
+    if (nano.slider[7] != ease_globalMix) {
+        nano.slider[7] => ease_globalMix;
+    }
+}
+
+
+fun void allGating(int idx) {
+    4.0::second => dur gateMax;
+    4.0::second => dur gateTime;
     while (true) {
-        Math.random2f(0.0, 1.0) => pan;
-        if (fn_chance > Math.random2f(0.0, 1.0)) {
-            fn_mp.pan(pan * 2.0 - 1.0);
+        Math.pow(g_rate[idx]/127.0, 3) * gateMax + 10::ms => gateTime;
+        if (g_rate[idx] != 0) {
+            0.0 => checkGate[idx];
+            0.0 => noiseCheckGate[idx];
+            for (0 => int i; i < lc_num; i++) {
+                lisaCluster[i].panVol(idx, 0.0);
+                noiseLisaCluster[i].panVol(idx, 0.0);
+            }
         }
-        (500 * (fn_chance * -1.0 + 1.0))::ms + 100::ms => now;
+        gateTime => now;
+        if (g_rate[idx] != 0) {
+            1.0 => checkGate[idx];
+            1.0 => noiseCheckGate[idx];
+            for (0 => int i; i < lc_num; i++) {
+                lisaCluster[i].panVol(idx, 1.0);
+                noiseLisaCluster[i].panVol(idx, 1.0);
+            }
+        }
+        gateTime => now;
     }
 }
 
-// Gate controls
-fun void gParams() {
-    // active/inactive
-    if (n.top[7] != g_state) {
-        n.top[7] => g_state;
-        // turns on/off gain
-        if (g_state) g_mp.vol(1.0);
-        else g_mp.vol(0.0);
-    }
-    // gain
-    if (n.slider[7] != g_vol) {
-        n.slider[7] => g_vol;
-        g.gain(g_vol/127.0);
-    }
-    if (n.knob[7] != g_pan) {
-        n.knob[7] => g_pan;
-        if (g_pan == 0) {
-            g_mp.pan(0.0);
-        }
-        g_pan/127.0 => g_spin;
-    }
-}
-
-// Gate panning
-fun void gSpin() {
-    float pan;
-    while (true) {
-        if (g_spin){
-            (g_spin * .001 + pan) % 1.0 => pan;
-            g_mp.pan(pan * 2.0 - 1.0);
-        }
-        1::ms => now;
-    }
-}
-*/
 
 spork ~ reichWobble();
-// spork ~ fnSpin();
-// spork ~ gSpin();
-// spork ~ hereWeGo();
+spork ~ fftWobble();
+spork ~ allGating(0);
+spork ~ allGating(1);
 
-
+// run it
 while (true) {
+    globalParams();
     sortParams();
     reichParams();
     lisaClusterParams();
     easing();
-    // fftParams();
-    // gParams();
-    // mParams();
+    checkParams();
+    globalParams();
+    updateGains();
     10::ms => now;
 }
