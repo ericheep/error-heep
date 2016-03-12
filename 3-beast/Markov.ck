@@ -42,38 +42,62 @@ public class Markov {
         return outputChain;
     }
 
-    // recursively populates the matrix
-    fun void recursiveCombinations(int pos, int element[], int current[], int combinations[][]) {
-        if (pos == current.size()) {
-            for (0 => int i; i < element.size(); i++) {
-                current[i] => combinations[currentRow][i];
-            }
+    // ~ manually inputting Cartesian Products for now, might figure this out later
 
-            currentRow++;
-            return;
-        }
-        for (int i; i < element.size(); i++) {
-            element[i] => current[pos];
-            recursiveCombinations(pos + 1, element, current, combinations);
-        }
-    }
+    /*
+    // three order markov, range of six
+    [[ 0 , 0 , 0 ], [ 0 , 0 , 1 ], [ 0 , 0 , 2 ], [ 0 , 0 , 3 ], [ 0 , 0 , 4 ], [ 0 , 0 , 5 ],
+    [ 0 , 1 , 0 ], [ 0 , 1 , 1 ], [ 0 , 1 , 2 ], [ 0 , 1 , 3 ], [ 0 , 1 , 4 ], [ 0 , 1 , 5 ],
+    [ 0 , 2 , 0 ], [ 0 , 2 , 1 ], [ 0 , 2 , 2 ], [ 0 , 2 , 3 ], [ 0 , 2 , 4 ], [ 0 , 2 , 5 ],
+    [ 0 , 3 , 0 ], [ 0 , 3 , 1 ], [ 0 , 3 , 2 ], [ 0 , 3 , 3 ], [ 0 , 3 , 4 ], [ 0 , 3 , 5 ],
+    [ 0 , 4 , 0 ], [ 0 , 4 , 1 ], [ 0 , 4 , 2 ], [ 0 , 4 , 3 ], [ 0 , 4 , 4 ], [ 0 , 4 , 5 ],
+    [ 0 , 5 , 0 ], [ 0 , 5 , 1 ], [ 0 , 5 , 2 ], [ 0 , 5 , 3 ], [ 0 , 5 , 4 ], [ 0 , 5 , 5 ],
+    [ 1 , 0 , 0 ], [ 1 , 0 , 1 ], [ 1 , 0 , 2 ], [ 1 , 0 , 3 ], [ 1 , 0 , 4 ], [ 1 , 0 , 5 ],
+    [ 1 , 1 , 0 ], [ 1 , 1 , 1 ], [ 1 , 1 , 2 ], [ 1 , 1 , 3 ], [ 1 , 1 , 4 ], [ 1 , 1 , 5 ],
+    [ 1 , 2 , 0 ], [ 1 , 2 , 1 ], [ 1 , 2 , 2 ], [ 1 , 2 , 3 ], [ 1 , 2 , 4 ], [ 1 , 2 , 5 ],
+    [ 1 , 3 , 0 ], [ 1 , 3 , 1 ], [ 1 , 3 , 2 ], [ 1 , 3 , 3 ], [ 1 , 3 , 4 ], [ 1 , 3 , 5 ],
+    [ 1 , 4 , 0 ], [ 1 , 4 , 1 ], [ 1 , 4 , 2 ], [ 1 , 4 , 3 ], [ 1 , 4 , 4 ], [ 1 , 4 , 5 ],
+    [ 1 , 5 , 0 ], [ 1 , 5 , 1 ], [ 1 , 5 , 2 ], [ 1 , 5 , 3 ], [ 1 , 5 , 4 ], [ 1 , 5 , 5 ],
+    [ 2 , 0 , 0 ], [ 2 , 0 , 1 ], [ 2 , 0 , 2 ], [ 2 , 0 , 3 ], [ 2 , 0 , 4 ], [ 2 , 0 , 5 ],
+    [ 2 , 1 , 0 ], [ 2 , 1 , 1 ], [ 2 , 1 , 2 ], [ 2 , 1 , 3 ], [ 2 , 1 , 4 ], [ 2 , 1 , 5 ],
+    [ 2 , 2 , 0 ], [ 2 , 2 , 1 ], [ 2 , 2 , 2 ], [ 2 , 2 , 3 ], [ 2 , 2 , 4 ], [ 2 , 2 , 5 ],
+    [ 2 , 3 , 0 ], [ 2 , 3 , 1 ], [ 2 , 3 , 2 ], [ 2 , 3 , 3 ], [ 2 , 3 , 4 ], [ 2 , 3 , 5 ],
+    [ 2 , 4 , 0 ], [ 2 , 4 , 1 ], [ 2 , 4 , 2 ], [ 2 , 4 , 3 ], [ 2 , 4 , 4 ], [ 2 , 4 , 5 ],
+    [ 2 , 5 , 0 ], [ 2 , 5 , 1 ], [ 2 , 5 , 2 ], [ 2 , 5 , 3 ], [ 2 , 5 , 4 ], [ 2 , 5 , 5 ],
+    [ 3 , 0 , 0 ], [ 3 , 0 , 1 ], [ 3 , 0 , 2 ], [ 3 , 0 , 3 ], [ 3 , 0 , 4 ], [ 3 , 0 , 5 ],
+    [ 3 , 1 , 0 ], [ 3 , 1 , 1 ], [ 3 , 1 , 2 ], [ 3 , 1 , 3 ], [ 3 , 1 , 4 ], [ 3 , 1 , 5 ],
+    [ 3 , 2 , 0 ], [ 3 , 2 , 1 ], [ 3 , 2 , 2 ], [ 3 , 2 , 3 ], [ 3 , 2 , 4 ], [ 3 , 2 , 5 ],
+    [ 3 , 3 , 0 ], [ 3 , 3 , 1 ], [ 3 , 3 , 2 ], [ 3 , 3 , 3 ], [ 3 , 3 , 4 ], [ 3 , 3 , 5 ],
+    [ 3 , 4 , 0 ], [ 3 , 4 , 1 ], [ 3 , 4 , 2 ], [ 3 , 4 , 3 ], [ 3 , 4 , 4 ], [ 3 , 4 , 5 ],
+    [ 3 , 5 , 0 ], [ 3 , 5 , 1 ], [ 3 , 5 , 2 ], [ 3 , 5 , 3 ], [ 3 , 5 , 4 ], [ 3 , 5 , 5 ],
+    [ 4 , 0 , 0 ], [ 4 , 0 , 1 ], [ 4 , 0 , 2 ], [ 4 , 0 , 3 ], [ 4 , 0 , 4 ], [ 4 , 0 , 5 ],
+    [ 4 , 1 , 0 ], [ 4 , 1 , 1 ], [ 4 , 1 , 2 ], [ 4 , 1 , 3 ], [ 4 , 1 , 4 ], [ 4 , 1 , 5 ],
+    [ 4 , 2 , 0 ], [ 4 , 2 , 1 ], [ 4 , 2 , 2 ], [ 4 , 2 , 3 ], [ 4 , 2 , 4 ], [ 4 , 2 , 5 ],
+    [ 4 , 3 , 0 ], [ 4 , 3 , 1 ], [ 4 , 3 , 2 ], [ 4 , 3 , 3 ], [ 4 , 3 , 4 ], [ 4 , 3 , 5 ],
+    [ 4 , 4 , 0 ], [ 4 , 4 , 1 ], [ 4 , 4 , 2 ], [ 4 , 4 , 3 ], [ 4 , 4 , 4 ], [ 4 , 4 , 5 ],
+    [ 4 , 5 , 0 ], [ 4 , 5 , 1 ], [ 4 , 5 , 2 ], [ 4 , 5 , 3 ], [ 4 , 5 , 4 ], [ 4 , 5 , 5 ],
+    [ 5 , 0 , 0 ], [ 5 , 0 , 1 ], [ 5 , 0 , 2 ], [ 5 , 0 , 3 ], [ 5 , 0 , 4 ], [ 5 , 0 , 5 ],
+    [ 5 , 1 , 0 ], [ 5 , 1 , 1 ], [ 5 , 1 , 2 ], [ 5 , 1 , 3 ], [ 5 , 1 , 4 ], [ 5 , 1 , 5 ],
+    [ 5 , 2 , 0 ], [ 5 , 2 , 1 ], [ 5 , 2 , 2 ], [ 5 , 2 , 3 ], [ 5 , 2 , 4 ], [ 5 , 2 , 5 ],
+    [ 5 , 3 , 0 ], [ 5 , 3 , 1 ], [ 5 , 3 , 2 ], [ 5 , 3 , 3 ], [ 5 , 3 , 4 ], [ 5 , 3 , 5 ],
+    [ 5 , 4 , 0 ], [ 5 , 4 , 1 ], [ 5 , 4 , 2 ], [ 5 , 4 , 3 ], [ 5 , 4 , 4 ], [ 5 , 4 , 5 ],
+    [ 5 , 5 , 0 ], [ 5 , 5 , 1 ], [ 5 , 5 , 2 ], [ 5 , 5 , 3 ], [ 5 , 5 , 4 ], [ 5 , 5 , 5 ]] @=> int combinations[][];*/
 
-    fun int factorial(int x) {
-        if (x <= 1) return 1;
-        else return (x * factorial(x - 1));
-    }
+    // two order markov, range of six
+    [[ 0 , 0 ], [ 0 , 1 ], [ 0 , 2 ], [ 0 , 3 ], [ 0 , 4 ], [ 0 , 5 ],
+    [ 1 , 0 ], [ 1 , 1 ], [ 1 , 2 ], [ 1 , 3 ], [ 1 , 4 ], [ 1 , 5 ],
+    [ 2 , 0 ], [ 2 , 1 ], [ 2 , 2 ], [ 2 , 3 ], [ 2 , 4 ], [ 2 , 5 ],
+    [ 3 , 0 ], [ 3 , 1 ], [ 3 , 2 ], [ 3 , 3 ], [ 3 , 4 ], [ 3 , 5 ],
+    [ 4 , 0 ], [ 4 , 1 ], [ 4 , 2 ], [ 4 , 3 ], [ 4 , 4 ], [ 4 , 5 ],
+    [ 5 , 0 ], [ 5 , 1 ], [ 5 , 2 ], [ 5 , 3 ], [ 5 , 4 ], [ 5 , 5 ]] @=> int combinations[][];
 
-    //
+    // generate probabilities from an existing chain
     fun float[][] generateTransitionMatrix(int inputChain[], int order, int range) {
 
         inputChain.size() => int length;
-
-        // Math.pow(range, order)$int => int rows;
         Math.pow(range, order)$int => int rows;
 
         float transitionMatrix[rows][range];
-        int combinations[rows][range];
-        // <<< transitionMatrix.size(), transitionMatrix[0].size() >>>;
 
         int element[range];
         int current[range];
@@ -83,12 +107,10 @@ public class Markov {
         }
 
         int combination[range];
-        recursiveCombinations(0, element, current, combinations);
         0 => currentRow;
 
-
         for (0 => int i; i < combinations.size(); i++) {
-            for (int j; j < range; j++) {
+            for (int j; j < order; j++) {
                 combinations[i][j] => combination[j];
             }
 
@@ -112,42 +134,31 @@ public class Markov {
             for (0 => int j; j < size; j++) {
                 1.0/size +=> transitionMatrix[i][matches[j]];
             }
-            <<< combination[0], combination[1], combination[2], "~", transitionMatrix[i][0], transitionMatrix[i][1], transitionMatrix[i][2] >>>;
         }
 
         return transitionMatrix;
     }
 }
 
+/*
 Markov markov;
 SinOsc sin => dac;
 
-3 => int range;
-3 => int order;
+6 => int range;
+2 => int order;
 
-/*
-// transistion matrix
-float transitionMatrix[rows][range];
+[0, 1, 5, 1, 2, 1, 2, 0, 2, 1, 2, 3, 2] @=> int base[];
+base @=> int chain[];
 
-for (0 => int i; i < rows; i++) {
-    for (0 => int j; j < range; j++) {
-        Math.random2f(0.0, 1.0) => transitionMatrix[i][j];
-    }
-}
-*/
-
-[0, 1, 2, 1, 1, 2] @=> int base[];
-int chain[base.size()];
-
-// <<< 0, 1, 2, 0, 1, 2, 2 >>>;
 // markov.generateChain(chain, transitionMatrix, order, range) @=> chain;
 markov.generateTransitionMatrix(base, order, range) @=> float transitionMatrix[][];
 
 while (true) {
     for (0 => int i; i < chain.size(); i++) {
         sin.freq(Std.mtof(chain[i] + 60));
-        150::ms => now;
+        50::ms => now;
     }
-    markov.generateChain(base, transitionMatrix, order, range) @=> chain;
+    markov.generateChain(chain, transitionMatrix, order, range) @=> chain;
     // <<< chain[0], chain[1], chain[2], chain[3], chain[4] >>>;
 }
+*/
