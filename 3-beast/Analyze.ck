@@ -11,10 +11,8 @@ public class Analyze extends Chubgraph {
     3 => g.op;
     0.9999 => p.pole;
 
-    int solenoid;
-
-    fun void init(int idx) {
-        idx => solenoid;
+    fun void setPole(float pole) {
+        pole => p.pole;
     }
 
     fun float decibel() {
@@ -22,9 +20,28 @@ public class Analyze extends Chubgraph {
     }
 
     // merely holds until a spike is heard above a certain level
-    fun void decibelSpike(float db) {
+    fun void decibelOver(float db) {
         while (decibel() < db) {
             1::samp => now;
         }
     }
+
+    fun void decibelUnder(float db) {
+        while (decibel() > db) {
+            1::samp => now;
+        }
+    }
 }
+
+/*
+Analyze a;
+
+adc.chan(0) => a;
+
+a.setPole(0.99);
+
+while (true) {
+    <<< a.decibel() >>>;
+    10::ms => now;
+}
+*/
