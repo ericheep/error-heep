@@ -1,4 +1,4 @@
-// master.ck
+// run.ck
 // Eric heep
 
 // mir classes

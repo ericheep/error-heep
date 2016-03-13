@@ -400,6 +400,7 @@ fun void sortParams() {
         noiseSort.record(1);
         1 => s_latch;
     }
+    //sort
     if (nano.rec[positionOffset] == 0 && s_latch) {
         sort.record(0);
         sort.play(1);
@@ -412,6 +413,7 @@ fun void sortParams() {
 fun void easing() {
     // easing amount
     0.04 => float increment;
+    0.02 => float gateIncrement;
 
     // check
     for (0 => int i; i < c_num; i++) {
@@ -441,6 +443,7 @@ fun void easing() {
         }
     }
 
+    // global
     if (globalMix < ease_globalMix) {
         globalMix + increment => globalMix;
         globalMix/127.0 => inputMix;
@@ -452,12 +455,13 @@ fun void easing() {
         1.0 - globalMix/127.0 => noiseMix;
     }
 
+    // gate rate
     for (0 => int i; i < g_num; i++) {
         if (g_rate[i] < ease_g_rate[i]) {
-            g_rate[i] + increment => g_rate[i];
+            g_rate[i] + gateIncrement => g_rate[i];
         }
         else if (g_rate[i] > ease_g_rate[i]) {
-            g_rate[i] - increment => g_rate[i];
+            g_rate[i] - gateIncrement => g_rate[i];
         }
     }
 }
@@ -535,7 +539,6 @@ fun void allGating(int idx) {
         gateTime => now;
     }
 }
-
 
 spork ~ reichWobble();
 spork ~ fftWobble();
