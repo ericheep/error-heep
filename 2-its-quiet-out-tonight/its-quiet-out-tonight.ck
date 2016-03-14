@@ -1,4 +1,4 @@
-// field-recording.ck
+// its-quiet-out-tonight.ck
 // Eric Heep
 
 // communication classes
@@ -46,6 +46,9 @@ float phonoVal[num][leds];
 
 float centroidColor[num];
 float spreadLed[num];
+float spreadLed2[num];
+float spreadLed3[num];
+float spreadLed4[num];
 
 float fieldGain[num];
 float easedFieldGain[num];
@@ -72,6 +75,9 @@ float filterBanks[num][leds];
 float bankControl;
 float easedCentroidColor[num];
 float easedSpreadLed[num];
+float easedSpreadLed2[num];
+float easedSpreadLed3[num];
+float easedSpreadLed4[num];
 
 0.5 => float centroidEasingAmount;
 0.5 => float spreadEasingAmount;

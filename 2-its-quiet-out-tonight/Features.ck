@@ -39,6 +39,7 @@ public class Features extends Chubgraph {
             spec.centroid(blob.fvals(), sr, N) => cent;
             spec.spread(blob.fvals(), sr, N) => spr;
             subband.filterBanks(blob.fvals(), freqRanges, sr, N) @=> banks;
+            <<< flat >>>;
         }
     }
 

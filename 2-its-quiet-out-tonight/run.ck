@@ -23,5 +23,5 @@ Machine.add(me.dir() + "/Sort.ck");
 
 // main program
 3.0::second => now;
-// Machine.add(me.dir() + "/field-recording.ck");
-Machine.add(me.dir() + "/test-run.ck");
+Machine.add(me.dir() + "/its-quiet-out-tonight.ck");
+// Machine.add(me.dir() + "/test-run.ck");

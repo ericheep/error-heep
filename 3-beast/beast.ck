@@ -16,7 +16,8 @@ Analyze analyze[NUM_SOLENOIDS];
 Actuate solenoid[NUM_SOLENOIDS];
 Markov markov[NUM_SOLENOIDS];
 int activated[NUM_SOLENOIDS];
-int wait[NUM_SOLENOIDS];
+int dyingWait[NUM_SOLENOIDS];
+int markovWait[NUM_SOLENOIDS];
 int endWait[NUM_SOLENOIDS];
 
 // sound chain
@@ -30,11 +31,17 @@ for (int i; i < NUM_SOLENOIDS; i++) {
 
     // wait
     0 => activated[i];
-    0 => wait[i];
+    0 => dyingWait[i];
+    0 => markovWait[i];
     0 => endWait[i];
 }
 
+now => time startScript;
 
+// timestamps
+fun int stopWatch() {
+    return ((now - startScript)/second) $ int;
+}
 
 // initial state
 fun void meditating(int idx) {
@@ -55,31 +62,18 @@ fun void meditating(int idx) {
         }
         waitDuration => now;
     }
-}
 
-// kill it for messing up
-fun void dying(int idx) {
-    1 => float decibelThreshold;
-    150::ms => dur originalWaitTime;
-    originalWaitTime => dur waitTime;
-    700::ms => dur endTime;
-    3::ms => dur incrementTime;
-    analyze[idx].setPole(0.99);
-    70 => int fallingVelocity;
-
-    while (waitTime < endTime && fallingVelocity > 0) {
-        if (analyze[idx].decibel() < decibelThreshold) {
-            waitTime + incrementTime => waitTime;
+    <<< idx, "organ", stopWatch() >>>;
+    now => time start;
+    while (now < start + 90::second) {
+        waitDuration - 10::ms => waitDuration;
+        risingVelocity++;
+        Std.clamp(risingVelocity, 0, maxVelocity) => risingVelocity;
+        solenoid[idx].hit(risingVelocity);
+        if (Math.random2f(0.0, 1.0) < sputterChance) {
+            spork ~ sputter(idx, sputterVelocity, waitDuration);
         }
-        else if (analyze[idx].decibel() > decibelThreshold) {
-            if (waitTime > originalWaitTime) {
-                waitTime - incrementTime => waitTime;
-            }
-        }
-        <<< waitTime/ms, idx, analyze[idx].decibel() >>>;
-        solenoid[idx].hit(fallingVelocity);
-        waitTime => now;
-        fallingVelocity--;
+        waitDuration => now;
     }
 }
 
@@ -89,7 +83,7 @@ fun void initialPlugIn(int idx) {
     while (analyze[idx].decibel() < decibelThreshold ){
         1::samp => now;
     }
-    <<< idx "activated", "" >>>;
+    <<< idx, "activated", stopWatch() >>>;
     1 => activated[idx];
 }
 
@@ -128,21 +122,64 @@ fun void sputter(int idx, int sputterVelocity, dur waitDuration) {
     }
 }
 
-// plugged in state
-fun void genetic(int idx) {
-    while (true) {
-        Math.random2f(6.0, 11.5)::ms => dur separationDuration;
-        Math.random2f(2.0, 4.0)::second => dur waitDuration;
-        now => time start;
-        while (now < start + waitDuration) {
-            solenoid[idx].hit(5);
-            separationDuration => now;
+// rejecting
+fun void rejecting(int idx) {
+    <<< idx, "rejecting", stopWatch() >>>;
+
+    int velocity;
+    2 => float decibelUnder;
+
+    now => time start;
+    while (now < start + 60::second) {
+        if (analyze[idx].decibel() > decibelUnder && velocity < 50) {
+            velocity++;
         }
+        else if (analyze[idx].decibel() <= decibelUnder && velocity > 0) {
+            velocity--;
+        }
+        Math.random2(25, 40)::ms => now;
+        solenoid[idx].hit(velocity);
+    }
+}
+
+// kill it for messing up
+fun void dying(int idx) {
+    1 => dyingWait[idx];
+    <<< idx, "dying wait", dyingWait[0], dyingWait[1], dyingWait[2] >>>;
+    while (dyingWait[0] == 0 || dyingWait[1] == 0 || dyingWait[2] == 0) {
+        1::samp => now;
+    }
+
+    // silence, then sync
+    5::second => now;
+
+    <<< idx, "dying", stopWatch() >>>;
+    5 => float decibelThreshold;
+    70::ms => dur originalWaitTime;
+    originalWaitTime => dur waitTime;
+    700::ms => dur endTime;
+    3::ms => dur incrementTime;
+    analyze[idx].setPole(0.99);
+    40 => int velocity;
+
+    while (waitTime < endTime) {
+        if (analyze[idx].decibel() < decibelThreshold) {
+            waitTime + incrementTime => waitTime;
+        }
+        else if (analyze[idx].decibel() > decibelThreshold) {
+            if (waitTime > originalWaitTime) {
+                waitTime - incrementTime => waitTime;
+            }
+        }
+        solenoid[idx].hit(velocity);
+        Math.random2(-5, 5)::ms + waitTime => now;
     }
 }
 
 // wake it up with trs, should be uplugged at this point
 fun void wake(int idx) {
+    <<< idx, "wake", stopWatch() >>>;
+
     analyze[idx].setPole(0.99);
 
     [0.03125, 0.10, 0.0625, 0.125, 0.16666, 0.20, 0.25, 0.33333] @=> float subdivisions[];
@@ -152,7 +189,6 @@ fun void wake(int idx) {
     32 => int rhythmSize;
     0 => int risingVelocity;
     0.0::samp => dur measureLength;
-
 
     10.0 => float decibelOverThreshold;
     4.0 => float decibelUnderThreshold;
@@ -170,15 +206,19 @@ fun void wake(int idx) {
 
         // when db goves over
         analyze[idx].decibelOver(decibelOverThreshold);
-        100::ms => now;
 
         // solenoid matching
-        if (ctr != trainSize + fillerSize) {
-            solenoid[idx].hit(risingVelocity);
-        }
-        else {
+        if (ctr == trainSize + fillerSize) {
             solenoid[idx].hit(127);
         }
+        else if (ctr == 0) {
+            solenoid[idx].hit(127);
+        }
+        else {
+            solenoid[idx].hit(risingVelocity);
+        }
+
+        100::ms => now;
 
         // when db drops under
         analyze[idx].decibelUnder(decibelUnderThreshold);
@@ -204,11 +244,11 @@ fun void wake(int idx) {
                 trainDurations[i] +=> sum;
             }
             sum/trainSize * 4 => measureLength;
-            <<< idx, "measure trained at", measureLength/second, "seconds" >>>;
+            <<< idx, "measure trained at", measureLength/second, "seconds", stopWatch() >>>;
         }
     }
 
-    <<< idx, "rhythms trained", "" >>>;
+    <<< idx, "rhythms trained", stopWatch() >>>;
 
     for (0 => int i; i < rhythmDurations.size(); i++) {
         for (0 => int j; j < subdivisions.size() - 1; j++) {
@@ -262,7 +302,7 @@ fun void wake(int idx) {
     1.0 => float speed;
     int inc;
 
-    <<< idx, "markov degradation", "" >>>;
+    <<< idx, "markov degradation", stopWatch() >>>;
 
     while (inc < 80) {
         if (risingVelocity > 10) {
@@ -288,16 +328,16 @@ fun void wake(int idx) {
         inc++;
     }
 
-    1 => wait[idx];
-    <<< idx, "markov Wait", wait[0], wait[1], wait[2], "" >>>;
-    while (wait[0] == 0 || wait[1] == 0 ||  wait[2] == 0) {
+    1 => markovWait[idx];
+    <<< idx, "markov wait", markovWait[0], markovWait[1], markovWait[2], stopWatch() >>>;
+    while (markovWait[0] == 0 || markovWait[1] == 0 ||  markovWait[2] == 0) {
         1::samp => now;
     }
 
     0.4 => speed;
     1.0::second => measureLength;
 
-    <<< idx, "markov converge", "", risingVelocity >>>;
+    <<< idx, "markov converge", "", risingVelocity, stopWatch() >>>;
     now => time start;
     while (now < start + 1::minute) {
         risingVelocity++;
@@ -321,7 +361,7 @@ fun int[] getIndices(float rhythms[], float subdivisions[]) {
 }
 
 fun void calm(int idx) {
-    <<< idx, "calm", "" >>>;
+    <<< idx, "calm", stopWatch() >>>;
     Math.random2f(6.0, 11.5)::ms => dur separationDuration;
     Math.random2f(2.0, 4.0)::second => dur waitDuration;
     1.0::minute => dur calmDuration;
@@ -339,27 +379,28 @@ fun void calm(int idx) {
     }
     25::second => now;
     idx * 70::ms => now;
-    solenoid[idx].hit(40);
+    solenoid[idx].hit(70);
 }
+
+spork ~ decibelLevels();
 
 // main program, sporkable
 fun void life(int idx) {
-    spork ~ initialPlugIn(idx);
-    meditating(idx);
-    // genetic(idx);
-    dying(idx);
+    // spork ~ initialPlugIn(idx);
+    // meditating(idx);
+    // rejecting(idx);
+    // dying(idx);
     wake(idx);
     calm(idx);
 }
 
 fun void decibelLevels() {
     while (true) {
-        //<<< analyze[0].decibel(), analyze[1].decibel(), analyze[2].decibel() >>>;
+        // <<< analyze[0].decibel(), analyze[1].decibel(), analyze[2].decibel() >>>;
         10::ms => now;
     }
 }
 
-spork ~ decibelLevels();
 
 // main program, three concurrent lives
 for (int i; i < NUM_SOLENOIDS; i++) {

@@ -11,6 +11,7 @@ public class Connect {
         int serial_port;
 
         for (int i; i < list.cap(); i++) {
+            <<< list[i] >>>;
             if (list[i].find("usb") > 0) {
                 i => serial_port;
                 <<< "Connected to", list[i] >>>;
