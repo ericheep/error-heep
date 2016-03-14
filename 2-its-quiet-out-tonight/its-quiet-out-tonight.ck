@@ -242,9 +242,14 @@ fun void updateColors() {
             // chooses which led will change
             Std.scalef(easedSpreadLed[i], 0.0, 127.0, 0.0, 15.99) $ int => int whichLed;
 
-            if (j == whichLed) {
-                // restricts range from red to blue
-                Std.scalef(easedCentroidColor[i], 0, 127, 127, 84.6) => mappedColor;
+            nano.knob[i * 4 + 2]/24 => int multitude;
+            // <<< multitude >>>;
+
+            for (int k; k < multitude; k++) {
+                if (j == (whichLed + k * 2) % leds) {
+                    // restricts range from red to blue
+                    Std.scalef(easedCentroidColor[i], 0, 127, 127, 84.6) => mappedColor;
+                }
             }
 
             // so blue remains the highest color
