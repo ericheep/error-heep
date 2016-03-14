@@ -50,12 +50,16 @@ float noiseCheckGate[c_num];
 for (0 => int i; i < c_num; i++) {
     input => check[i] => checkPan[i] => dac;
     fft => noiseCheck[i] => noiseCheckPan[i] => dac;
+    checkPan[i].gain(1.0);
+    noiseCheckPan[i].gain(1.0);
     check[i].duration(3::second);
     noiseCheck[i].duration(3::second);
     check[i].loop(0);
     noiseCheck[i].loop(0);
     check[i].gain(0.0);
     noiseCheck[i].gain(0.0);
+    1.0 => checkGate[i];
+    1.0 => noiseCheckGate[i];
 }
 
 checkPan[0].pan(-1.0);
@@ -75,31 +79,34 @@ dur c_dur;
 
 
 // ~ Reich ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-Reich reich;
-Reich noiseReich;
+3 => int r_num;
+0 => int r_mod;
+
+Reich reich[r_num];
+Reich noiseReich[r_num];
 Gain reichGains[2];
 
-// reich sound chain
-fft => noiseReich => reichGains[0] => dac.left;
-noiseReich => reichGains[1] => dac.right;
+for (0 => int i; i < r_num; i++) {
+    input => reich[i] => reichGains[0] => dac.left;
+    reich[i] => reichGains[1] => dac.right;
+    fft => noiseReich[i] => reichGains[0] => dac.left;
+    noiseReich[i] => reichGains[1] => dac.right;
 
-// reich initialize functions
-noiseReich.gain(0.0);
-noiseReich.randomPos(1);
-noiseReich.voices(32);
-noiseReich.bi(1);
-noiseReich.randomPos(1);
+    // reich initialize functions
+    reich[i].gain(0.0);
+    reich[i].randomPos(1);
+    reich[i].voices(32);
+    reich[i].bi(1);
+    reich[i].randomPos(1);
 
-// reich sound chain
-input => reich => reichGains[0] => dac.left;
-reich => reichGains[1] => dac.right;
+    // reich initialize functions
+    noiseReich[i].gain(0.0);
+    noiseReich[i].randomPos(1);
+    noiseReich[i].voices(32);
+    noiseReich[i].bi(1);
+    noiseReich[i].randomPos(1);
 
-// reich initialize functions
-reich.gain(0.0);
-reich.randomPos(1);
-reich.voices(32);
-reich.bi(1);
-reich.randomPos(1);
+}
 
 int r_vol;
 int r_spd;
@@ -108,26 +115,29 @@ int r_state;
 
 
 // ~ Sort ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-Sort sort;
+3 => int s_num;
+0 => int s_mod;
+
+Sort sort[s_num];
+Sort noiseSort[s_num];
 Pan2 panSort;
 Gain sortGains[2];
 
+for (0 => int i; i < s_num; i++) {
+    input => sort[i] => panSort;
+    sort[i].stepDuration(50::ms);
+    fft => noiseSort[i] => panSort;
+    noiseSort[i].stepDuration(50::ms);
+}
+
 // sort sound chain
-input => sort => panSort => sortGains[0] => dac.left;
+panSort => sortGains[0] => dac.left;
 panSort => sortGains[1] => dac.right;
-sort.stepDuration(50::ms);
-
-Sort noiseSort;
-
-// sort sound chain
-fft => noiseSort => panSort;
-noiseSort.stepDuration(50::ms);
 
 float s_vol;
 int s_state;
 int s_latch;
 int s_pan;
-float s_mod;
 float s_spin;
 
 float ease_s_vol;
@@ -230,6 +240,7 @@ fun void checkPlay() {
         check[0].playPos(0::samp);
         noiseCheck[0].playPos(0::samp);
         c_dur * (c_space/127.0 * 20 + 0.5) => now;
+
         check[1].play(1);
         noiseCheck[1].play(1);
         check[1].playPos(0::samp);
@@ -246,19 +257,19 @@ fun void reichParams() {
         nano.mute[positionOffset] => r_state;
         // turns on/off gain
         if (r_state) {
-            reich.gain(r_vol);
-            noiseReich.gain(r_vol);
+            reich[r_mod].gain(r_vol);
+            noiseReich[r_mod].gain(r_vol);
         }
         else {
-            reich.gain(0.0);
-            noiseReich.gain(0.0);
+            reich[r_mod].gain(0.0);
+            noiseReich[r_mod].gain(0.0);
         }
     }
     // speed
     if (nano.knob[positionOffset] != r_spd) {
         nano.knob[positionOffset] => r_spd;
-        reich.speed(r_spd/127.0 * 2.0);
-        noiseReich.speed(r_spd/127.0 * 2.0);
+        reich[r_mod].speed(r_spd/127.0 * 2.0);
+        noiseReich[r_mod].speed(r_spd/127.0 * 2.0);
     }
     // gain
     if (nano.slider[positionOffset] != r_vol) {
@@ -266,17 +277,19 @@ fun void reichParams() {
     }
     // record
     if (nano.rec[positionOffset] && r_latch == 0) {
-        reich.play(0);
-        reich.record(1);
-        noiseReich.play(0);
-        noiseReich.record(1);
+        (1 + r_mod) % r_num => r_mod;
+
+        reich[r_mod].play(0);
+        reich[r_mod].record(1);
+        noiseReich[r_mod].play(0);
+        noiseReich[r_mod].record(1);
         1 => r_latch;
     }
     if (nano.rec[positionOffset] == 0 && r_latch) {
-        reich.record(0);
-        reich.play(1);
-        noiseReich.record(0);
-        noiseReich.play(1);
+        reich[r_mod].record(0);
+        reich[r_mod].play(1);
+        noiseReich[r_mod].record(0);
+        noiseReich[r_mod].play(1);
         0 => r_latch;
     }
 }
@@ -375,12 +388,12 @@ fun void sortParams() {
         nano.mute[positionOffset] => s_state;
         // turns on/off gain
         if (s_state) {
-            sort.gain(s_vol);
-            noiseSort.gain(s_vol);
+            sort[s_mod].gain(s_vol);
+            noiseSort[s_mod].gain(s_vol);
         }
         else {
-            sort.gain(0.0);
-            noiseSort.gain(0.0);
+            sort[s_mod].gain(0.0);
+            noiseSort[s_mod].gain(0.0);
         }
     }
     // gain
@@ -394,18 +407,20 @@ fun void sortParams() {
     }
     // record
     if (nano.rec[positionOffset] && s_latch == 0) {
-        sort.play(0);
-        sort.record(1);
-        noiseSort.play(0);
-        noiseSort.record(1);
+        (1 + s_mod) % s_num => s_mod;
+
+        sort[s_mod].play(0);
+        sort[s_mod].record(1);
+        noiseSort[s_mod].play(0);
+        noiseSort[s_mod].record(1);
         1 => s_latch;
     }
     //sort
     if (nano.rec[positionOffset] == 0 && s_latch) {
-        sort.record(0);
-        sort.play(1);
-        noiseSort.record(0);
-        noiseSort.play(1);
+        sort[s_mod].record(0);
+        sort[s_mod].play(1);
+        noiseSort[s_mod].record(0);
+        noiseSort[s_mod].play(1);
         0 => s_latch;
     }
 }
@@ -475,12 +490,16 @@ fun void updateGains() {
     }
 
     // reich
-    reich.gain(r_vol/127.0 * globalGain * inputMix);
-    noiseReich.gain(r_vol/127.0 * globalGain * noiseMix);
+    for (0 => int i; i < r_num; i++) {
+        reich[i].gain(r_vol/127.0 * globalGain * inputMix);
+        noiseReich[i].gain(r_vol/127.0 * globalGain * noiseMix);
+    }
 
     // sort
-    sort.gain(s_vol/127.0 * globalGain * inputMix);
-    noiseSort.gain(s_vol/127.0 * globalGain * noiseMix);
+    for (0 => int i; i < s_num; i++) {
+        sort[i].gain(s_vol/127.0 * globalGain * inputMix);
+        noiseSort[i].gain(s_vol/127.0 * globalGain * noiseMix);
+    }
 
     // lisaCluster
     for (0 => int i; i < lc_num; i++) {
