@@ -24,7 +24,7 @@ int endWait[NUM_SOLENOIDS];
 Gain input[NUM_SOLENOIDS];
 
 for (int i; i < NUM_SOLENOIDS; i++) {
-    adc.chan(i) => input[i] => dac;;
+    adc.chan(i) => input[i] => dac.chan(i);;
     input[i] => analyze[i];
     analyze[i].setPole(0.999);
     solenoid[i].init(i);
@@ -386,10 +386,10 @@ spork ~ decibelLevels();
 
 // main program, sporkable
 fun void life(int idx) {
-    // spork ~ initialPlugIn(idx);
-    // meditating(idx);
-    // rejecting(idx);
-    // dying(idx);
+    spork ~ initialPlugIn(idx);
+    meditating(idx);
+    rejecting(idx);
+    dying(idx);
     wake(idx);
     calm(idx);
 }

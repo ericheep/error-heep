@@ -2,7 +2,6 @@
 // Eric Heep, March 10th 2016
 
 // set number of channels
-2 => int NUM_CHANNELS;
 
 // midi control
 NanoKontrol2 nano;
@@ -16,11 +15,23 @@ NanoKontrol2 nano;
 // 8, hard stop on all volume, volume fade, might not use
 
 // speech
-adc => Gain input => Pan2 inputPan => dac;
+adc => Gain input => Gain inputGain => Pan2 inputPan => LPF lpf => HPF hpf => dac;
+
+hpf.freq(340);
+
+inputPan.gain(0.5);
+inputPan.left => dac.left;
+inputPan.right => dac.right;
+
 1.0 => float globalGain;
+inputGain.gain(0.0);
 
 // ~ FFTNoise ~~~~~~~~~~~~~~~~~~~~~~~~~~
-adc => FFTNoise fft => Pan2 fftPan => dac;
+adc => FFTNoise fft => Pan2 fftPan;
+
+fftPan.left => dac.chan(0);
+fftPan.right => dac.chan(1);
+
 fft.listen(1);
 
 // for balancing the two
@@ -491,8 +502,8 @@ fun void updateGains() {
 
     // reich
     for (0 => int i; i < r_num; i++) {
-        reich[i].gain(r_vol/127.0 * globalGain * inputMix);
-        noiseReich[i].gain(r_vol/127.0 * globalGain * noiseMix);
+        reich[i].gain(r_vol/127.0 * globalGain * inputMix * 0.05);
+        noiseReich[i].gain(r_vol/127.0 * globalGain * noiseMix * 0.05);
     }
 
     // sort
@@ -511,9 +522,11 @@ fun void updateGains() {
 fun void globalParams() {
     if (nano.stop) {
         0.0 => globalGain;
+        inputGain.gain(1.0);
         fft.gain(0.0);
     }
     if (nano.play) {
+        inputGain.gain(0.0);
         1.0 => globalGain;
         fft.gain(1.0);
     }

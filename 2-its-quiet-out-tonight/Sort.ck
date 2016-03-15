@@ -24,8 +24,8 @@ public class Sort extends Chubgraph {
     // step duration
     fun void stepDuration(dur s) {
         s => step_dur;
-        env.attack(step_dur/4);
-        env.release(step_dur/4);
+        env.attack(s * 0.25);
+        env.release(s * 0.25);
     }
 
     // max buffer size
@@ -82,16 +82,19 @@ public class Sort extends Chubgraph {
     fun void playing() {
         mic.play(1);
         arg.cap() => hard_max;
+
+        step_dur * 0.25 => dur attack;
+        step_dur * 0.25 => dur release;
+
+
         while(play_active) {
+            env.keyOn();
             if (inc < arg.cap() || inc > -1) {
-                // <<< "Inc:", inc, "Min", min, "Max:", max, "" >>>;
                 mic.playPos(step_dur * arg[inc]);
             }
-
-            env.keyOn();
-            step_dur * 3/4 => now;
+            step_dur - attack => now;
             env.keyOff();
-            step_dur * 1/4 => now;
+            release => now;
 
             direction +=> inc;
             if (inc == hard_max - 1 || inc == max) {
@@ -100,7 +103,6 @@ public class Sort extends Chubgraph {
             if (inc == 0 || inc == min) {
                 1 => direction;
             }
-            // <<< "playing" >>>;
         }
         mic.play(0);
     }
@@ -125,6 +127,7 @@ public class Sort extends Chubgraph {
             1::samp => now;
         }
         now => time present;
+
         mic.record(0);
         present - past +=> running_time;
         findMeans(step_dur) @=> arg;
@@ -134,19 +137,21 @@ public class Sort extends Chubgraph {
 /*
 adc => Sort s => dac;
 
-s.stepDuration(30::ms);
-
 s.record(1);
-4::second => now;
+1000::ms => now;
 s.record(0);
 
 s.play(1);
-4::second => now;
-// s.play(0);
+1::second => now;
+s.play(0);
 
-s.minPos(0.00);
-s.maxPos(0.25);
+s.record(1);
+10000::ms => now;
+s.record(0);
+
+s.play(1);
 
 while (true) {
     1::second => now;
 }
+*/
