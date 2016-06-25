@@ -14,8 +14,8 @@ Machine.add(me.dir() + "/Features.ck");
 Machine.add(me.dir() + "/CheapRMS.ck");
 
 // midi classes
-Machine.add(me.dir() + "/NanoKontrol2.ck");
-Machine.add(me.dir() + "/Quneo.ck");
+// Machine.add(me.dir() + "/NanoKontrol2.ck");
+// Machine.add(me.dir() + "/Quneo.ck");
 
 // looping classes
 Machine.add(me.dir() + "/Phonogene.ck");
@@ -23,5 +23,5 @@ Machine.add(me.dir() + "/Sort.ck");
 
 // main program
 3.0::second => now;
-Machine.add(me.dir() + "/its-quiet-out-tonight.ck");
-// Machine.add(me.dir() + "/test-run.ck");
+// Machine.add(me.dir() + "/its-quiet-out-tonight.ck");
+Machine.add(me.dir() + "/test-run.ck");
