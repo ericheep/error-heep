@@ -9,4 +9,5 @@ Machine.add(me.dir() + "Analyze.ck");
 Machine.add(me.dir() + "Markov.ck");
 
 // main script
-Machine.add(me.dir() + "beast.ck");
+Machine.add(me.dir() + "beast-kick.ck");
+// Machine.add(me.dir() + "test.ck");

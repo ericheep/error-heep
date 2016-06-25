@@ -43,6 +43,16 @@ fun int stopWatch() {
     return ((now - startScript)/second) $ int;
 }
 
+// start it up
+fun void initialPlugIn(int idx) {
+    5 => float decibelThreshold;
+    while (analyze[idx].decibel() < decibelThreshold ){
+        1::samp => now;
+    }
+    <<< idx, "activated", stopWatch() >>>;
+    1 => activated[idx];
+}
+
 // initial state
 fun void meditating(int idx) {
     14 => int risingVelocity;
@@ -75,16 +85,6 @@ fun void meditating(int idx) {
         }
         waitDuration => now;
     }
-}
-
-// start it up
-fun void initialPlugIn(int idx) {
-    5 => float decibelThreshold;
-    while (analyze[idx].decibel() < decibelThreshold ){
-        1::samp => now;
-    }
-    <<< idx, "activated", stopWatch() >>>;
-    1 => activated[idx];
 }
 
 // random sputters, for color
@@ -190,8 +190,8 @@ fun void wake(int idx) {
     0 => int risingVelocity;
     0.0::samp => dur measureLength;
 
-    4.0 => float decibelOverThreshold;
-    2.0 => float decibelUnderThreshold;
+    10.0 => float decibelOverThreshold;
+    4.0 => float decibelUnderThreshold;
 
     int ctr;
     int vel;
@@ -243,7 +243,7 @@ fun void wake(int idx) {
             for (0 => int i; i < trainSize; i++) {
                 trainDurations[i] +=> sum;
             }
-            sum/trainSize * 3 => measureLength;
+            sum/trainSize * 4 => measureLength;
             <<< idx, "measure trained at", measureLength/second, "seconds", stopWatch() >>>;
         }
     }
@@ -362,34 +362,32 @@ fun int[] getIndices(float rhythms[], float subdivisions[]) {
 
 fun void calm(int idx) {
     <<< idx, "calm", stopWatch() >>>;
+    Math.random2f(6.0, 11.5)::ms => dur separationDuration;
+    Math.random2f(2.0, 4.0)::second => dur waitDuration;
     1.0::minute => dur calmDuration;
     now => time start;
     while( now < start + calmDuration) {
-        Math.random2f(8.0, 8.5)::ms => dur separationDuration;
-        Math.random2f(3.0, 4.0)::second => dur waitDuration;
         now => time innerStart;
         while (now < innerStart + waitDuration) {
-            solenoid[idx].hit(6);
+            solenoid[idx].hit(5);
             separationDuration => now;
         }
     }
-    <<< idx, "ended", stopWatch() >>>;
     1 => endWait[idx];
-    while (endWait[0] == 0 || endWait[1] == 0 || endWait[2] == 0) {
+    while (endWait[0] == 0 || endWait[1] == 0 || endWait[2] || 0) {
         1::samp => now;
     }
-    <<< idx, "silence", stopWatch() >>>;
-    21::second => now;
+    25::second => now;
     idx * 70::ms => now;
-    solenoid[idx].hit(120);
+    solenoid[idx].hit(70);
 }
 
 spork ~ decibelLevels();
 
 // main program, sporkable
 fun void life(int idx) {
-    spork ~ initialPlugIn(idx);
-    meditating(idx);
+    //spork ~ initialPlugIn(idx);
+    //meditating(idx);
     rejecting(idx);
     dying(idx);
     wake(idx);

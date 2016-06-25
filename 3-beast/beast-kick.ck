@@ -19,12 +19,19 @@ int activated[NUM_SOLENOIDS];
 int dyingWait[NUM_SOLENOIDS];
 int markovWait[NUM_SOLENOIDS];
 int endWait[NUM_SOLENOIDS];
+int kickWait[NUM_SOLENOIDS];
 
 // sound chain
 Gain input[NUM_SOLENOIDS];
+Pan2 pan[NUM_SOLENOIDS];
+
+pan[0].pan(-0.5);
+pan[1].pan(0.0);
+pan[2].pan(0.5);
+
 
 for (int i; i < NUM_SOLENOIDS; i++) {
-    adc.chan(i) => input[i] => dac.chan(i);;
+    adc.chan(i) => input[i] => pan[i] => dac;
     input[i] => analyze[i];
     analyze[i].setPole(0.999);
     solenoid[i].init(i);
@@ -150,8 +157,22 @@ fun void dying(int idx) {
         1::samp => now;
     }
 
+    2::second => now;
+
+    <<< "kick", "" >>>;
+
+    90 => float decibelUnder;
+    // FIX THIS RIGHT HEREJ
+    while (kickWait[0] == 0 && kickWait[1] == 0 && kickWait[2] == 0) {
+        10::ms => now;
+        if (analyze[idx].decibel() > decibelUnder) {
+            <<< analyze[idx].decibel() >>>;
+            1 => kickWait[idx];
+        }
+    }
+
     // silence, then sync
-    5::second => now;
+    // 5::second => now;
 
     <<< idx, "dying", stopWatch() >>>;
     5 => float decibelThreshold;
@@ -185,7 +206,7 @@ fun void wake(int idx) {
     [0.03125, 0.10, 0.0625, 0.125, 0.16666, 0.20, 0.25, 0.33333] @=> float subdivisions[];
 
     8 => int fillerSize;
-    16 => int trainSize;
+    24 => int trainSize;
     32 => int rhythmSize;
     0 => int risingVelocity;
     0.0::samp => dur measureLength;
@@ -243,12 +264,13 @@ fun void wake(int idx) {
             for (0 => int i; i < trainSize; i++) {
                 trainDurations[i] +=> sum;
             }
-            sum/trainSize * 3 => measureLength;
+            sum/trainSize * 4 => measureLength;
             <<< idx, "measure trained at", measureLength/second, "seconds", stopWatch() >>>;
         }
     }
 
     <<< idx, "rhythms trained", stopWatch() >>>;
+    <<< rhythmDurations.size(), subdivisions.size() >>>;
 
     for (0 => int i; i < rhythmDurations.size(); i++) {
         for (0 => int j; j < subdivisions.size() - 1; j++) {
@@ -270,6 +292,13 @@ fun void wake(int idx) {
         }
     }
 
+    for (0 => int i; i < rhythms.size(); i++) {
+        if (risingVelocity > 34) {
+            risingVelocity--;
+        }
+        solenoid[idx].hit(risingVelocity);
+        rhythms[i] * measureLength => now;
+    }
     for (0 => int i; i < rhythms.size(); i++) {
         if (risingVelocity > 34) {
             risingVelocity--;

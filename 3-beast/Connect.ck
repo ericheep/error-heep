@@ -37,5 +37,4 @@ public class Connect {
         vel & 255 => bytes[2];
         serial.writeBytes(bytes);
     }
-
 }
