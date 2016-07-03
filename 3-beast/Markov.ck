@@ -5,7 +5,7 @@ public class Markov {
     0 => int currentRow;
 
     fun int[] generateChain(int inputChain[], float transitionMatrix[][], int order, int range) {
-        /* Calculates an output chain based on the input and its probabilities
+        /* Calculates an output chain based on the input and its probabilities.
 
         Parameters
         ----------
@@ -110,6 +110,22 @@ public class Markov {
 
     // generate probabilities from an existing chain
     fun float[][] generateTransitionMatrix(int inputChain[], int order, int range) {
+        /* Generates transition matrix from a chain.
+
+        Parameters
+        ----------
+        inputChain : int array
+            input chain that the output will be created from
+        order : int
+            Markov chain order
+        range : int
+            range of values that can be considered
+
+        Returns
+        -------
+        outputChain : int array
+            output chain
+        */
 
         inputChain.size() => int length;
         Math.pow(range, order)$int => int rows;
