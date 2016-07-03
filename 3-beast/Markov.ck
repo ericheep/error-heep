@@ -5,6 +5,24 @@ public class Markov {
     0 => int currentRow;
 
     fun int[] generateChain(int inputChain[], float transitionMatrix[][], int order, int range) {
+        /* Calculates an output chain based on the input and its probabilities
+
+        Parameters
+        ----------
+        inputChain : int array
+            input chain that the output will be created from
+        transitionMatrix : two dimensional float array
+            collection of probabilities
+        order : int
+            Markov chain order
+        range : int
+            range of values that can be considered
+
+        Returns
+        -------
+        outputChain : int array
+            output chain
+        */
 
         inputChain.size() => int length;
         int outputChain[length];
@@ -18,7 +36,6 @@ public class Markov {
                inputChain[(length - order + i + j) % length] => int element;
                (Math.pow(range, order - i - 1) * element) $ int +=> row;
             }
-
 
             // finds range of values
             float sum;
