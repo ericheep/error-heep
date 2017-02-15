@@ -1,6 +1,6 @@
 // Eric Heep
 // February 14th, 2017
-// syncedMarkovMelody.ck
+// Markov.ck
 
 class Markov {
 
